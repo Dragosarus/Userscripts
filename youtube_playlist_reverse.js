@@ -57,7 +57,7 @@
             btn_svg.appendChild(arrow_down);
 
             setTimeout(addButton, 500);
-            setTimeout(start, 500)
+            setTimeout(start, 500);
         }
 
         function onButtonClick() { // toggle
@@ -93,7 +93,7 @@
             withQuery(".html5-main-video", function(res) {
                 player = res[0];
                 player.addEventListener("timeupdate",checkTime);
-            })
+            });
         }
 
         function withQuery(query, onSuccess) {
@@ -102,7 +102,7 @@
                 onSuccess(res);
                 return res;
             } else { // not loaded yet => retry
-                setTimeout(function(){withQuery(query)}, 100);
+                setTimeout(function(){withQuery(query);}, 100);
             }
         }
 
@@ -111,7 +111,7 @@
             if (playPrevious && timeLeft < 1.3 && !redirectFlag && !player.hasAttribute("loop")) {
                 redirectFlag = true;
                 redirect();
-                setTimeout(function() {redirectFlag = false}, 1000);
+                setTimeout(function() {redirectFlag = false;}, 1000);
             }
         }
 
@@ -131,7 +131,7 @@
             for (const a of Array.from(query).entries()) { // a = {index, element}
                 if (a[1].textContent.includes("▶")) { // Current video's position in playlist
                     index = a[0]; // index in query
-                    if (index == 0) {break} // start of list
+                    if (index == 0) {break;} // start of list
                     previousURL = query[index-1].children[0].href;
                     return previousURL;
                 }
@@ -161,6 +161,3 @@
         }
     });
 })();
-
-
-
