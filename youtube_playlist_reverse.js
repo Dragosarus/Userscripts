@@ -10,7 +10,7 @@
 // ==/UserScript==
 
 // Cookies (current session):
-// pytplir_playReverse - saves the button state between loads
+// pytplir_playPrevious - saves the button state between loads
 
 (function() {
     'use strict';
@@ -20,7 +20,7 @@
         var player;
         var arrow_up;
         var arrow_down;
-        var playReverse;
+        var playPrevious;
         var btn_svg;
         var redirectFlag = false;
         // remove the need to refresh the page for the script to work properly
@@ -30,10 +30,10 @@
         init();
 
         function init() {
-            playReverse = getCookie("pytplir_playReverse");
-            if (playReverse === "") { // cookie has not been set yet
-                playReverse = false; // inital state
-                setCookie("pytplir_playReverse",playReverse);
+            playPrevious = getCookie("pytplir_playPrevious");
+            if (playPrevious === "") { // cookie has not been set yet
+                playPrevious = false; // inital state
+                setCookie("pytplir_playPrevious",playPrevious);
             }
 
             // create button
@@ -58,8 +58,8 @@
         }
 
         function onButtonClick() { // toggle
-            playReverse = !playReverse;
-            setCookie("pytplir_playReverse",playReverse);
+            playPrevious = !playPrevious;
+            setCookie("pytplir_playPrevious",playPrevious);
             updateButtonState();
         }
 
@@ -73,7 +73,7 @@
         }
 
         function updateButtonState() {
-            if (playReverse) { // play previous video
+            if (playPrevious) { // play previous video
                 arrow_up.setAttribute("style","fill:rgb(64,166,255)");
                 arrow_down.setAttribute("style","fill:rgb(144,144,144)");
             } else { // play next video
@@ -105,7 +105,7 @@
 
         function checkTime() {
             var timeLeft = player.duration - player.currentTime;
-            if (playReverse && timeLeft < 1.3 && !redirectFlag && !player.hasAttribute("loop")) {
+            if (playPrevious && timeLeft < 1.3 && !redirectFlag && !player.hasAttribute("loop")) {
                 redirectFlag = true;
                 redirect();
                 setTimeout(function() {redirectFlag = false}, 1000);
