@@ -17,6 +17,9 @@
 
     // Your code here...
     $(document).ready(function() {
+        var activeColor = "rgb(64,166,255)";
+        var inactiveColor = "rgb(144,144,144)";
+
         var player;
         var arrow_up;
         var arrow_down;
@@ -74,11 +77,11 @@
 
         function updateButtonState() {
             if (playPrevious) { // play previous video
-                arrow_up.setAttribute("style","fill:rgb(64,166,255)");
-                arrow_down.setAttribute("style","fill:rgb(144,144,144)");
+                arrow_up.setAttribute("style","fill:"+activeColor);
+                arrow_down.setAttribute("style","fill:"+inactiveColor);
             } else { // play next video
-                arrow_up.setAttribute("style","fill:rgb(144,144,144)");
-                arrow_down.setAttribute("style","fill:rgb(64,166,255)");
+                arrow_up.setAttribute("style","fill:"+inactiveColor);
+                arrow_down.setAttribute("style","fill:"+activeColor);
             }
         }
 
