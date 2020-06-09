@@ -108,7 +108,8 @@
 
         function checkTime() {
             var timeLeft = player.duration - player.currentTime;
-            if (playPrevious && timeLeft < 1.3 && !redirectFlag && !player.hasAttribute("loop")) {
+            var shuffle = strToBool($("[aria-label='Shuffle playlist']")[0].attributes["aria-pressed"].nodeValue);
+            if (playPrevious && timeLeft < 1.3 && !redirectFlag && !player.hasAttribute("loop") && !shuffle) {
                 redirectFlag = true;
                 redirect();
                 setTimeout(function() {redirectFlag = false;}, 1000);
@@ -138,6 +139,10 @@
             }
         }
 
+        function strToBool(str) {
+            return str.toLowerCase() == "true" ? true : false;
+        }
+
         // adapted from https://www.w3schools.com/js/js_cookies.asp
         function setCookie(cname, cvalue) {
             document.cookie = cname + "=" + cvalue + ";sameSite=lax;path=www.youtube.com/watch";
@@ -154,7 +159,7 @@
                 }
                 if (c.indexOf(name) == 0) {
                     var x = c.substring(name.length, c.length);
-                    return ((x.toLowerCase() == "true") ? true : false);
+                    return strToBool(x);
                 }
             }
             return "";
