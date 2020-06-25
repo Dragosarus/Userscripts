@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      2.0
+// @version      2.1
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        www.youtube.com/watch?*list*
@@ -186,7 +186,7 @@
 
         function checkTime() {
             var timeLeft = player.duration - player.currentTime;
-            var shuffle = strToBool($("[aria-label='Shuffle playlist']")[0].attributes["aria-pressed"].nodeValue);
+            var shuffle = strToBool($("path[d='M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z']")[1].parentNode.parentNode.parentNode.parentNode.attributes["aria-pressed"].nodeValue);
             if (playPrevious && timeLeft < 1.3 && !redirectFlag && !player.hasAttribute("loop") && !shuffle) {
                 redirectFlag = true;
                 redirect();
