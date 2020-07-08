@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      2.4
+// @version      3.0
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        www.youtube.com/*
@@ -16,21 +16,19 @@
  *    - Since version 2.3, due to how Youtube loads pages, @match has been expanded
  *      from www.youtube.com/watch?*list* to www.youtube.com/* in order to avoid having to refresh the page
  *      in order to run the script (and display the button). Change it back if this is not desired.
- *    - Also, since I do not know how to load new pages the way Youtube does, the script redirects you to
- *      the URL containing the previous video instead of loading the page asynchronously. This is also the
- *      case when the player is in "miniplayer" mode, meaning you will be forced out of this mode and you
- *      will have to navigate back to where you where after reactivating the mode. Deactivate the button
- *      (down arrow highlighted) or activate the shuffle button in order to prevent redirects while in
- *      this mode.
  *    - If the button is not displayed (but the script is running), reload the video via the playlist,
  *      refresh the page, or press 'i' twice (i.e. enter and exit miniplayer mode).
 */
 
 (function() {
     'use strict';
-
-    // Your code here...
     $(document).ready(function() {
+        // Determines when to load the next video.
+        // Increase these if the redirect does not work as intended (i.e. fails to override Youtube's redirect),
+        // Decreasing these will let you see more of the video before it redirects, but the redirect might stop working (consistently)
+        var redirectWhenTimeLeft = 0.2; // seconds before end of video
+        var redirectWhenTimeLeft_miniplayer = 0.5; // for some reason this needs to be larger
+
         var activeColor = "rgb(64,166,255)";
         var inactiveColor = "rgb(144,144,144)";
         var circleColor = "rgb(144,144,144)";
@@ -39,6 +37,7 @@
 
         var player;
         var playPrevious;
+        var ytdApp = $("ytd-app")[0];
         var redirectFlag = false;
 
         // create button
@@ -229,7 +228,19 @@
             catch (TypeError) { // video player undefined
             	return;
             }
-            if (playPrevious && timeLeft < 1.3 && !redirectFlag && !player.hasAttribute("loop") && !shuffle && !videoPlayer.classList.contains("ad-showing")) {
+
+            var redirectTime;
+            if (ytdApp.hasAttribute("miniplayer-active_")) {
+                redirectTime = redirectWhenTimeLeft_miniplayer;
+            } else {
+                redirectTime = redirectWhenTimeLeft;
+            }
+
+            if (playPrevious && timeLeft < redirectTime && !redirectFlag && !player.hasAttribute("loop") && !shuffle && !videoPlayer.classList.contains("ad-showing")) {
+                // attempt to prevent the default redirect from triggering
+                player.pause();
+                player.currentTime -= 1;
+
                 redirectFlag = true;
                 redirect();
                 setTimeout(function() {redirectFlag = false;}, 1000);
@@ -239,23 +250,15 @@
         function redirect() {
             var previousURL = getPreviousURL();
             if (previousURL) {
-                document.location.href = previousURL;
-            } else { // probably at start of playlist
-                player.pause(); // prevent next video from loading
+                previousURL.click();
             }
         }
 
-        function getPreviousURL(){
-            var query = document.querySelectorAll("#playlist-items");
-            var index;
-            var previousURL;
-            for (const a of Array.from(query).entries()) { // a = {index, element}
-                if (a[1].textContent.includes("▶")) { // Current video's position in playlist
-                    index = a[0]; // index in query
-                    if (index == 0) {break;} // start of list
-                    previousURL = query[index-1].children[0].href;
-                    return previousURL;
-                }
+        function getPreviousURL(){ // returns <a> element
+            if (ytdApp.hasAttribute("miniplayer-active_")) { // avoid being forced out of miniplayer mode on video load
+                return $("div.miniplayer").find("ytd-playlist-panel-video-renderer[selected]").prev().children()[0];
+            } else {
+                return $("#content").find("ytd-playlist-panel-video-renderer[selected]").prev().children()[0];
             }
         }
 
