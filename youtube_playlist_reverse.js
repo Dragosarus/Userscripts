@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.0
+// @version      3.1
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        www.youtube.com/*
@@ -27,7 +27,7 @@
         // Increase these if the redirect does not work as intended (i.e. fails to override Youtube's redirect),
         // Decreasing these will let you see more of the video before it redirects, but the redirect might stop working (consistently)
         var redirectWhenTimeLeft = 0.2; // seconds before end of video
-        var redirectWhenTimeLeft_miniplayer = 0.5; // for some reason this needs to be larger
+        var redirectWhenTimeLeft_miniplayer = 0.2;
 
         var activeColor = "rgb(64,166,255)";
         var inactiveColor = "rgb(144,144,144)";
@@ -239,7 +239,7 @@
             if (playPrevious && timeLeft < redirectTime && !redirectFlag && !player.hasAttribute("loop") && !shuffle && !videoPlayer.classList.contains("ad-showing")) {
                 // attempt to prevent the default redirect from triggering
                 player.pause();
-                player.currentTime -= 1;
+                player.currentTime -= 2;
 
                 redirectFlag = true;
                 redirect();
@@ -255,10 +255,19 @@
         }
 
         function getPreviousURL(){ // returns <a> element
+            var elem;
             if (ytdApp.hasAttribute("miniplayer-active_")) { // avoid being forced out of miniplayer mode on video load
-                return $("div.miniplayer").find("ytd-playlist-panel-video-renderer[selected]").prev().children()[0];
+                elem = $("div.miniplayer").find("ytd-playlist-panel-video-renderer[selected]").prev();
+                while (!elem.find("#unplayableText").prop("hidden")) { // while unplayable (e.g. private) video is selected
+                    elem = elem.prev();
+                }
+                return elem.children()[0];
             } else {
-                return $("#content").find("ytd-playlist-panel-video-renderer[selected]").prev().children()[0];
+                elem = $("#content").find("ytd-playlist-panel-video-renderer[selected]").prev();
+                while (!elem.find("#unplayableText").prop("hidden")) { // while unplayable (e.g. private) video is selected
+                    elem = elem.prev();
+                }
+                return elem.children()[0];
             }
         }
 
