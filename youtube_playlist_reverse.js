@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.1
+// @version      3.2
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        www.youtube.com/*
@@ -16,8 +16,12 @@
  *    - Since version 2.3, due to how Youtube loads pages, @match has been expanded
  *      from www.youtube.com/watch?*list* to www.youtube.com/* in order to avoid having to refresh the page
  *      in order to run the script (and display the button). Change it back if this is not desired.
- *    - If the button is not displayed (but the script is running), reload the video via the playlist,
- *      refresh the page, or press 'i' twice (i.e. enter and exit miniplayer mode).
+ *    - If the button is not displayed (but the script is running), do one of the following:
+ *      . pause and unpause the video
+ *      . reload the video via the playlist
+ *      . refresh the page
+ *      . press 'i' twice (i.e. enter and exit miniplayer mode).
+ *    - If the button is displayed but does not work properly/consistently, increase the value of redirectWhentTimeLeft.
 */
 
 (function() {
@@ -205,6 +209,7 @@
             withQuery(".html5-main-video", ":visible", function(res) {
                 player = res[0];
                 player.addEventListener("timeupdate",checkTime);
+                player.addEventListener("play", addButton); // ensure button is added
             });
         }
 
