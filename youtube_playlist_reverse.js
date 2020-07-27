@@ -21,7 +21,7 @@
  *      . reload the video via the playlist
  *      . refresh the page
  *      . press 'i' twice (i.e. enter and exit miniplayer mode).
- *    - If the button is displayed but does not work properly/consistently, increase the value of redirectWhentTimeLeft.
+ *    - If the button is displayed but does not work properly/consistently, increase the value of redirectWhenTimeLeft.
 */
 
 (function() {
