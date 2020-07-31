@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.3
+// @version      3.4
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
-// @match        www.youtube.com/*
+// @match        http*://www.youtube.com/*
 // @grant        none
 // @require      http://code.jquery.com/jquery-latest.js
 // ==/UserScript==
@@ -13,9 +13,6 @@
 // pytplir_playPrevious - saves the button state between loads
 
 /* NOTES:
- *    - Since version 2.3, due to how Youtube loads pages, @match has been expanded
- *      from www.youtube.com/watch?*list* to www.youtube.com/* in order to avoid having to refresh the page
- *      in order to run the script (and display the button). Change it back if this is not desired.
  *    - If the button is not displayed (but the script is running), do one of the following:
  *      . pause and unpause the video
  *      . reload the video via the playlist
@@ -281,7 +278,7 @@
         }
 
         function strToBool(str) {
-            return str.toLowerCase() == "true" ? true : false;
+            return str.toLowerCase() == "true";
         }
 
         // adapted from https://www.w3schools.com/js/js_cookies.asp
