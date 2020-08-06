@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.5
+// @version      4.0
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -13,11 +13,8 @@
 // pytplir_playPrevious - saves the button state between loads
 
 /* NOTES:
- *    - If the button is not displayed (but the script is running), do one of the following:
- *      . pause and unpause the video
- *      . reload the video via the playlist
- *      . refresh the page
- *      . press 'i' twice (i.e. enter and exit miniplayer mode).
+ *    - If the button is not displayed (but the script is running), pause and unpause the video.
+ *    - If it still does not appear, reload the page.
  *    - If the button is displayed but does not work properly/consistently, increase the value of redirectWhenTimeLeft.
 */
 
@@ -141,24 +138,24 @@
         $(btn_svg).on("mouseenter",function(){$(this).parent().find("#pytplir_tt_fadein")[0].beginElement();});
         $(btn_svg).on("mouseleave",function(){$(this).parent().find("#pytplir_tt_fadeout")[0].beginElement();});
 
-        // remove the need to refresh the page for the script to work properly
-        $("html")[0].addEventListener("yt-navigate-finish",init); // most cases
-
         init();
 
         function init() {
-            // remove the need to refresh the page for the script to work properly
-            withQuery("ytd-player","*",function(res) {
-                res[0].addEventListener("yt-player-updated",init); // when in miniplayer mode and (playPrevious is false or shuffle is on)
+            // the button needs to be re-added whenever the playlist is updated (e.g when a video is loaded or removed)
+            function observerCallback(mutationList, observer) {
+                addButton();
+            }
+            const playlistObserver = new MutationObserver(observerCallback);
+            var playlist = $("#playlist");
+            $("ytd-playlist-panel-renderer[id='playlist']").each(function(){
+                playlistObserver.observe(this,{subtree:true,childList:true});
             });
 
-            removeButton(); // try to ensure button is (re-)added properly
             playPrevious = getCookie("pytplir_playPrevious");
             if (playPrevious === "") { // cookie has not been set yet
                 playPrevious = false; // inital state
                 setCookie("pytplir_playPrevious",playPrevious);
             }
-            setTimeout(addButton, 500);
             setTimeout(start, 500);
         }
 
@@ -197,20 +194,13 @@
             }
         }
 
-        function removeButton() {
-            $("div[id=pytplir_div]").each(function(){
-                this.parentNode.removeChild(this);
-            });
-        }
-
         function start() {
             withQuery(".html5-main-video", ":visible", function(res) {
                 player = res[0];
                 player.addEventListener("timeupdate",checkTime);
                 player.addEventListener("play", addButton); // ensure button is added
             });
-            var vidNum_tmp = $("#publisher-container").find("span")[1].innerHTML;
-            vidNum = $.trim(vidNum_tmp.substring(0,vidNum_tmp.indexOf("/")));
+            addButton();
         }
 
         function withQuery(query,filter="*", onSuccess = function(r){}) {
@@ -241,17 +231,22 @@
                 redirectTime = redirectWhenTimeLeft;
             }
 
-            if (playPrevious && timeLeft < redirectTime && !redirectFlag && !player.hasAttribute("loop") && !shuffle && !videoPlayer.classList.contains("ad-showing")) {
+            if (!redirectFlag && playPrevious && !shuffle && !player.hasAttribute("loop") && !videoPlayer.classList.contains("ad-showing") && timeLeft < redirectTime) {
                 // attempt to prevent the default redirect from triggering
                 player.pause();
                 player.currentTime -= 2;
 
-                if (vidNum != "1") {
+                if (getVidNum() != "1") {
                     redirectFlag = true;
                     redirect();
                     setTimeout(function() {redirectFlag = false;}, 1000);
                 }
             }
+        }
+
+        function getVidNum() {
+            var vidNum_tmp = $("#publisher-container").find("span")[1].innerHTML;
+            return $.trim(vidNum_tmp.substring(0,vidNum_tmp.indexOf("/")));
         }
 
         function redirect() {
