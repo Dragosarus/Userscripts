@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      4.0
+// @version      4.1
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -24,8 +24,8 @@
         // Determines when to load the next video.
         // Increase these if the redirect does not work as intended (i.e. fails to override Youtube's redirect),
         // Decreasing these will let you see more of the video before it redirects, but the redirect might stop working (consistently)
-        var redirectWhenTimeLeft = 0.2; // seconds before end of video
-        var redirectWhenTimeLeft_miniplayer = 0.2;
+        var redirectWhenTimeLeft = 0.3; // seconds before end of video
+        var redirectWhenTimeLeft_miniplayer = 0.6;
 
         var activeColor = "rgb(64,166,255)";
         var inactiveColor = "rgb(144,144,144)";
@@ -38,6 +38,8 @@
         var ytdApp = $("ytd-app")[0];
         var redirectFlag = false;
         var vidNum; // string
+        var shuffle;
+        var miniplayerFlag = false; // keep track of switches between miniplayer and normal mode
 
         // create button
         var btn_div = document.createElement("div");
@@ -168,7 +170,7 @@
         function addButton() {
             withQuery(".ytd-playlist-panel-renderer > div[id=top-level-buttons]", "*", function(res) {
                 res.each(function() {
-                    if (!$(this).filter(":has(#pytplir_div)").length) {
+                    if (!$(this).find("#pytplir_div").length) {
                         this.appendChild($(btn_div).clone(true)[0]);
                         updateButtonState();
                     }
@@ -218,20 +220,25 @@
 
             var timeLeft = player.duration - player.currentTime;
             var videoPlayer = $(".html5-video-player")[0];
-            var shuffle = strToBool($("path[d='M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z']").filter(":visible").parents("button[aria-pressed]")[0].attributes["aria-pressed"].nodeValue);
+            var miniplayerActive = ytdApp.hasAttribute("miniplayer-active_");
+            if (!shuffle || (miniplayerActive != miniplayerFlag)) { // wysiwyg
+                shuffle = $("path[d='M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z']").filter(":visible").parents("button[aria-pressed]")[0];
+            }
+            var miniplayerFlag = miniplayerActive;
+            var shuffleEnabled = strToBool(shuffle.attributes["aria-pressed"].nodeValue);
             try {videoPlayer.classList.contains("ad-showing");}
             catch (TypeError) { // video player undefined
             	return;
             }
 
             var redirectTime;
-            if (ytdApp.hasAttribute("miniplayer-active_")) {
+            if (miniplayerActive) {
                 redirectTime = redirectWhenTimeLeft_miniplayer;
             } else {
                 redirectTime = redirectWhenTimeLeft;
             }
 
-            if (!redirectFlag && playPrevious && !shuffle && !player.hasAttribute("loop") && !videoPlayer.classList.contains("ad-showing") && timeLeft < redirectTime) {
+            if (!redirectFlag && playPrevious && !shuffleEnabled && !player.hasAttribute("loop") && !videoPlayer.classList.contains("ad-showing") && timeLeft < redirectTime) {
                 // attempt to prevent the default redirect from triggering
                 player.pause();
                 player.currentTime -= 2;
@@ -245,7 +252,7 @@
         }
 
         function getVidNum() {
-            var vidNum_tmp = $("#publisher-container").find("span")[1].innerHTML;
+            var vidNum_tmp = $("#publisher-container").find("span")[1].innerHTML + "/"; // apparently this is e.g "1" in Firefox, but "1 / n" in Chrome
             return $.trim(vidNum_tmp.substring(0,vidNum_tmp.indexOf("/")));
         }
 
