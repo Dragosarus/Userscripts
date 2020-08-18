@@ -61,7 +61,7 @@
     }
 
     function check() {
-        if (!$("#drpt_label").length || ($("ytd-app")[0].hasAttribute("miniplayer-active_") && !$("#drpt_label_miniplayer").length)) {
+        if (!$("#drypt_label").length || ($("ytd-app")[0].hasAttribute("miniplayer-active_") && !$("#drypt_label_miniplayer").length)) {
             update();
         }
         if ($("#pytplir_btn").length) {
@@ -188,27 +188,27 @@
         var text = formatTime(time_total_s);
         if (text == "") {return;} // this is apparently possible
         if (!$("ytd-app")[0].hasAttribute("miniplayer-active_")) {
-            if (!$("#drpt_label").length) {
+            if (!$("#drypt_label").length) {
                 var label = document.createElement("a");
                 var textColor = "rgb(237,240,243)";
                 label.setAttribute("font-family","Roboto, Noto, sans-serif");
                 label.setAttribute("font-size","13px");
                 label.setAttribute("fill",textColor);
-                label.setAttribute("id","drpt_label");
+                label.setAttribute("id","drypt_label");
                 $("div.index-message-wrapper")[0].appendChild(label);
             }
-            $("#drpt_label")[0].innerHTML = before + "(" + text + " left)";
+            $("#drypt_label")[0].innerHTML = before + "(" + text + " left)";
 
         } else { // miniplayer
-            if (!$("#drpt_label_miniplayer").length) {
+            if (!$("#drypt_label_miniplayer").length) {
                 var label_miniplayer = document.createElement("a");
                 label_miniplayer.setAttribute("font-family","Roboto, Noto, sans-serif");
                 label_miniplayer.setAttribute("font-size","13px");
                 label_miniplayer.setAttribute("fill",textColor);
-                label_miniplayer.setAttribute("id","drpt_label_miniplayer");
+                label_miniplayer.setAttribute("id","drypt_label_miniplayer");
                 $("yt-formatted-string[id=owner-name]")[0].appendChild(label_miniplayer);
             }
-            $("#drpt_label_miniplayer")[0].innerHTML = before_miniplayer + "(" + text + " left)";
+            $("#drypt_label_miniplayer")[0].innerHTML = before_miniplayer + "(" + text + " left)";
         }
     }
 
