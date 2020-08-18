@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      4.2
+// @version      5.0
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -40,6 +40,7 @@
         var vidNum; // string
         var shuffle;
         var miniplayerFlag = false; // keep track of switches between miniplayer and normal mode
+        var playerListenersAdded = false;
 
         // create button
         var btn_div = document.createElement("div");
@@ -148,17 +149,23 @@
                 start();
             }
             const playlistObserver = new MutationObserver(observerCallback);
-            var playlist = $("#playlist");
-            $("ytd-playlist-panel-renderer[id='playlist']").each(function(){
-                playlistObserver.observe(this,{subtree:true,childList:true});
-            });
-
+            const observerOptions = {subtree:true, childList:true, attributes:true, characterData:true};
+            initObservers(playlistObserver, observerOptions);
             playPrevious = getCookie("pytplir_playPrevious");
             if (playPrevious === "") { // cookie has not been set yet
                 playPrevious = false; // inital state
                 setCookie("pytplir_playPrevious",playPrevious);
             }
             setTimeout(start, 500);
+        }
+
+        function initObservers(observer, options) {
+            try {
+                observer.observe($(".ytd-watch-flexy #playlist").find("#playlist-action-menu")[0], options);
+                observer.observe($(".miniplayer #header-contents")[0],options);
+            } catch (e) {
+                setTimeout(function(){initObservers(observer)},100);
+            }
         }
 
         function onButtonClick() { // toggle
@@ -194,17 +201,19 @@
                     this.setAttribute("style","fill:"+activeColor);
                 });
             }
+            $("#pytplir_btn")[0].setAttribute("activated",playPrevious);
         }
 
         function start() {
-            if ($("#pytplir_div").length) { return; }// button already loaded
-
-            withQuery(".html5-main-video", ":visible", function(res) {
-                player = res[0];
-                player.addEventListener("timeupdate",checkTime);
-                player.addEventListener("play", addButton); // ensure button is added
-            });
             addButton();
+            if (!playerListenersAdded) {
+                withQuery(".html5-main-video", ":visible", function(res) {
+                    player = res[0];
+                    player.addEventListener("timeupdate",checkTime);
+                    player.addEventListener("play", addButton); // ensure button is added
+                    playerListenersAdded = true;
+                });
+            }
         }
 
         function withQuery(query,filter="*", onSuccess = function(r){}) {
@@ -251,6 +260,7 @@
                 player.currentTime -= 2;
 
                 if (getVidNum() != "1") {
+                    console.log("vidnum",getVidNum());
                     redirectFlag = true;
                     redirect();
                     setTimeout(function() {redirectFlag = false;}, 1000);
@@ -259,7 +269,13 @@
         }
 
         function getVidNum() {
-            var vidNum_tmp = $("#publisher-container").find("span")[1].innerHTML + "/"; // apparently this is e.g "1" in Firefox, but "1 / n" in Chrome
+            var vidNum_tmp;
+            if (ytdApp.hasAttribute("miniplayer-active_")) {
+                vidNum_tmp = $("yt-formatted-string[id=owner-name").children()[2].innerHTML;
+            } else {
+                vidNum_tmp = $("#publisher-container").find("span")[1].innerHTML + "/"; // apparently this is e.g "1" in Firefox, but "1 / n" in Chrome
+            }
+
             return $.trim(vidNum_tmp.substring(0,vidNum_tmp.indexOf("/")));
         }
 
