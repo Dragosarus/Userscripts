@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      4.1
+// @version      4.2
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -145,7 +145,7 @@
         function init() {
             // the button needs to be re-added whenever the playlist is updated (e.g when a video is loaded or removed)
             function observerCallback(mutationList, observer) {
-                addButton();
+                start();
             }
             const playlistObserver = new MutationObserver(observerCallback);
             var playlist = $("#playlist");
@@ -197,6 +197,8 @@
         }
 
         function start() {
+            if ($("#pytplir_div").length) { return; }// button already loaded
+
             withQuery(".html5-main-video", ":visible", function(res) {
                 player = res[0];
                 player.addEventListener("timeupdate",checkTime);
@@ -206,7 +208,12 @@
         }
 
         function withQuery(query,filter="*", onSuccess = function(r){}) {
-            var res = $(query).filter(filter);
+            var res;
+            if (filter == "*") {
+                res = $(query);
+            } else {
+                res = $(query).filter(filter);
+            }
             if (res.length) { // >= 1 result
                 onSuccess(res);
                 return res;
@@ -238,7 +245,7 @@
                 redirectTime = redirectWhenTimeLeft;
             }
 
-            if (!redirectFlag && playPrevious && !shuffleEnabled && !player.hasAttribute("loop") && !videoPlayer.classList.contains("ad-showing") && timeLeft < redirectTime) {
+            if (timeLeft < redirectTime && !redirectFlag && playPrevious && !shuffleEnabled && !player.hasAttribute("loop") && !videoPlayer.classList.contains("ad-showing")) {
                 // attempt to prevent the default redirect from triggering
                 player.pause();
                 player.currentTime -= 2;
@@ -267,17 +274,13 @@
             var elem;
             if (ytdApp.hasAttribute("miniplayer-active_")) { // avoid being forced out of miniplayer mode on video load
                 elem = $("div.miniplayer").find("ytd-playlist-panel-video-renderer[selected]").prev();
-                while (!elem.find("#unplayableText").prop("hidden")) { // while unplayable (e.g. private) video is selected
-                    elem = elem.prev();
-                }
-                return elem.children()[0];
             } else {
                 elem = $("#content").find("ytd-playlist-panel-video-renderer[selected]").prev();
-                while (!elem.find("#unplayableText").prop("hidden")) { // while unplayable (e.g. private) video is selected
-                    elem = elem.prev();
-                }
-                return elem.children()[0];
             }
+            while (!elem.find("#unplayableText").prop("hidden")) { // while unplayable (e.g. private) video is selected
+                elem = elem.prev();
+            }
+            return elem.children()[0];
         }
 
         function strToBool(str) {
