@@ -260,7 +260,6 @@
                 player.currentTime -= 2;
 
                 if (getVidNum() != "1") {
-                    console.log("vidnum",getVidNum());
                     redirectFlag = true;
                     redirect();
                     setTimeout(function() {redirectFlag = false;}, 1000);
