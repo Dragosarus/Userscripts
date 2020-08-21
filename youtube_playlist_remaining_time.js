@@ -222,9 +222,9 @@
 
     function formatTime0(time_total_s) { // "x.xx hours" OR "x.xx minutes" OR "x seconds"
         if (time_total_s >= textformat0_hourThreshold) {
-            return (time_total_s / textformat0_hourThreshold).toFixed(textformat0_decimalPlaces) + " hours";
+            return (time_total_s / 3600).toFixed(textformat0_decimalPlaces) + " hours";
         } else if (time_total_s >= textformat0_minuteThreshold) {
-            return (time_total_s / textformat0_minuteThreshold).toFixed(textformat0_decimalPlaces) + " minutes";
+            return (time_total_s / 60).toFixed(textformat0_decimalPlaces) + " minutes";
         } else {
             return time_total_s + " seconds";
         }
