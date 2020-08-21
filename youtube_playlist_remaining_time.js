@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      1.1
+// @version      1.2
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -179,6 +179,10 @@
         while (p.length > 0) {
             s += m * parseInt(p.pop(), 10);
             m *= 60;
+        }
+
+        if (isNaN(s)) { // Likely caused by premiere video
+            return 0;
         }
 
         return s;
