@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      1.0
+// @version      1.1
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
