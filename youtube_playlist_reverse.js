@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      5.0
+// @version      5.1
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -26,6 +26,7 @@
         // Decreasing these will let you see more of the video before it redirects, but the redirect might stop working (consistently)
         var redirectWhenTimeLeft = 0.3; // seconds before end of video
         var redirectWhenTimeLeft_miniplayer = 0.6;
+        var skipPremiere = true; // Skip videos that have not been premiered yet
 
         var activeColor = "rgb(64,166,255)";
         var inactiveColor = "rgb(144,144,144)";
@@ -156,7 +157,7 @@
                 playPrevious = false; // inital state
                 setCookie("pytplir_playPrevious",playPrevious);
             }
-            setTimeout(start, 500);
+            start();
         }
 
         function initObservers(observer, options) {
@@ -292,8 +293,12 @@
             } else {
                 elem = $("#content").find("ytd-playlist-panel-video-renderer[selected]").prev();
             }
-            while (!elem.find("#unplayableText").prop("hidden")) { // while unplayable (e.g. private) video is selected
+
+            if (skipPremiere) { var ts = $(elem).find("span.ytd-thumbnail-overlay-time-status-renderer")[0].innerHTML; }
+
+            while (!elem.find("#unplayableText").prop("hidden") || (skipPremiere && !ts.includes(":"))) { // while unplayable (e.g. private) video is selected
                 elem = elem.prev();
+                if (skipPremiere) { ts = $(elem).find("span.ytd-thumbnail-overlay-time-status-renderer")[0].innerHTML; }
             }
             return elem.children()[0];
         }
