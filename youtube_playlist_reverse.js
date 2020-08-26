@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      5.2
+// @version      5.3
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -260,7 +260,7 @@
                 player.pause();
                 player.currentTime -= 2;
 
-                if (getVidNum() != "1") {
+                if (getVidNum()[0] != 1) {
                     redirectFlag = true;
                     redirect();
                     setTimeout(function() {redirectFlag = false;}, 1000);
@@ -268,15 +268,14 @@
             }
         }
 
-        function getVidNum() {
+        function getVidNum() { // returns integer array [current, total], e.g "32 / 152" => [32,152]
             var vidNum_tmp;
             if (ytdApp.hasAttribute("miniplayer-active_")) {
-                vidNum_tmp = $("yt-formatted-string[id=owner-name").children()[2].innerHTML;
+                vidNum_tmp = $("yt-formatted-string[id=owner-name]").children()[2].innerHTML;
             } else {
-                vidNum_tmp = $("#publisher-container").find("span")[1].innerHTML + "/"; // apparently this is e.g "1" in Firefox, but "1 / n" in Chrome
+                vidNum_tmp = $("#publisher-container").find("span.index-message")[0].innerHTML;
             }
-
-            return $.trim(vidNum_tmp.substring(0,vidNum_tmp.indexOf("/")));
+            return vidNum_tmp.split(" / ").map(x => parseInt(x));
         }
 
         function redirect() {
