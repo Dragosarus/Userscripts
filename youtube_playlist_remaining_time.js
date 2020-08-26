@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      1.2
+// @version      2.0
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -29,12 +29,18 @@
     var includeCurrentVideo = true; // whether the length of the current video should be included
     var before = " - "; // ::before
     var before_miniplayer = " • ";
+    var after = " left) "; // e.g "15h 20m 15s left)"
+    var incompleteIndicator = "(more than "; // e.g "(more than 15h 20m 15s left)", for large playlists (> 200 videos)
+    var completeIndicator = "("; // e.g "(15h 20m 15s left)"
     var updateCooldown = 2500; // limit how often update() is run (milliseconds)
 
     var updateFlagTime = 0;
     var time_total_s = 0;
     var errorFlag = false;
     var direction;
+    var incompleteFlag = false; // A playlist only displays the 199 previous+next entries in the playlist.
+    const DOWN = 0; // direction
+    const UP = 1; // direction
 
     const playlistObserver = new MutationObserver(observerCallback);
     const pytplirObserver = new MutationObserver(pytplirCallback);
@@ -92,6 +98,7 @@
         } else {
             setTimeout(update,100);
             errorFlag = false;
+            incompleteFlag = false;
         }
     }
 
@@ -109,6 +116,7 @@
     }
 
     function getNextEntry(current){
+        var previous = current;
         if (direction) { // pytplir
             current = $(current).prev();
         } else {
@@ -121,26 +129,38 @@
                 return current[0];
             }
         } else {
+            checkIncomplete(previous);
             return undefined;
         }
     }
 
-    function getVidNum() {
+    function checkIncomplete(entry) {
+        var vidNums = getVidNum();
+        var num = parseInt($(entry).find("#index")[0].innerHTML);
+        var currentVideo = isNaN(num) // ▶ instead of number
+        if (currentVideo){
+            incompleteFlag = false;
+        } else {
+            incompleteFlag = (direction == DOWN && num != vidNums[1]) || (direction == UP && num != 1);
+        }
+    }
+
+    function getVidNum() { // returns integer array [current, total], e.g "32 / 152" => [32,152]
         var vidNum_tmp;
         if ($("ytd-app")[0].hasAttribute("miniplayer-active_")) {
-            vidNum_tmp = $("yt-formatted-string[id=owner-name").children()[2].innerHTML;
+            vidNum_tmp = $("yt-formatted-string[id=owner-name]").children()[2].innerHTML;
         } else {
-            vidNum_tmp = $("#publisher-container").find("span")[1].innerHTML + "/"; // apparently this is e.g "1" in Firefox, but "1 / n" in Chrome
+            vidNum_tmp = $("#publisher-container").find("span.index-message")[0].innerHTML;
         }
-        return $.trim(vidNum_tmp.substring(0,vidNum_tmp.indexOf("/")));
+        return vidNum_tmp.split(" / ").map(x => parseInt(x));
     }
 
     function getDirection(){ // Compatible with https://greasyfork.org/en/scripts/404986-play-youtube-playlist-in-reverse-order
         var pytplir_btn = $("#pytplir_btn");
         if (!pytplir_btn.length) {
-            return 0; // down
+            return DOWN; // 0
         } else {
-            return pytplir_btn.attr("activated") == "true" ? 1 : 0;
+            return pytplir_btn.attr("activated") == "true" ? UP : DOWN;
         }
     }
 
@@ -189,8 +209,10 @@
     }
 
     function display() {
-        var text = formatTime(time_total_s);
-        if (text == "") {return;} // this is apparently possible
+        var time = formatTime(time_total_s);
+        if (time == "") {return;} // this is apparently possible
+
+        var middle = incompleteFlag ? incompleteIndicator : completeIndicator; // e.g "(more than " or "( "
         if (!$("ytd-app")[0].hasAttribute("miniplayer-active_")) {
             if (!$("#drypt_label").length) {
                 var label = document.createElement("a");
@@ -201,7 +223,7 @@
                 label.setAttribute("id","drypt_label");
                 $("div.index-message-wrapper")[0].appendChild(label);
             }
-            $("#drypt_label")[0].innerHTML = before + "(" + text + " left)";
+            $("#drypt_label")[0].innerHTML = before + middle + time + after;
 
         } else { // miniplayer
             if (!$("#drypt_label_miniplayer").length) {
@@ -212,8 +234,9 @@
                 label_miniplayer.setAttribute("id","drypt_label_miniplayer");
                 $("yt-formatted-string[id=owner-name]")[0].appendChild(label_miniplayer);
             }
-            $("#drypt_label_miniplayer")[0].innerHTML = before_miniplayer + "(" + text + " left)";
+            $("#drypt_label_miniplayer")[0].innerHTML = before_miniplayer + middle + time + after;
         }
+        incompleteFlag = false;
     }
 
     function formatTime(time_total_s) {
