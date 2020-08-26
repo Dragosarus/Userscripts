@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      5.1
+// @version      5.2
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -294,11 +294,17 @@
                 elem = $("#content").find("ytd-playlist-panel-video-renderer[selected]").prev();
             }
 
-            if (skipPremiere) { var ts = $(elem).find("span.ytd-thumbnail-overlay-time-status-renderer")[0].innerHTML; }
+            if (skipPremiere) {
+                var ts = $(elem).find("span.ytd-thumbnail-overlay-time-status-renderer");
+                if (ts.length) {ts = ts[0].innerHTML; }
+            }
 
             while (!elem.find("#unplayableText").prop("hidden") || (skipPremiere && !ts.includes(":"))) { // while unplayable (e.g. private) video is selected
                 elem = elem.prev();
-                if (skipPremiere) { ts = $(elem).find("span.ytd-thumbnail-overlay-time-status-renderer")[0].innerHTML; }
+                if (skipPremiere) {
+                    ts = $(elem).find("span.ytd-thumbnail-overlay-time-status-renderer");
+                    if (ts.length) { ts = ts[0].innerHTML; }
+                }
             }
             return elem.children()[0];
         }
