@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Disable Discord chat input
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      2.0
+// @version      3.0
 // @description  Avoid accidentally typing in chat
 // @author       Dragosarus
-// @match        *discord.com/channels/*
+// @match        *discord.com/*
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // @require      http://code.jquery.com/jquery-latest.js
@@ -13,23 +13,31 @@
 (function() {
     'use strict';
 
-    // Your code here...
-    var disableTextArea = true;
-    var menuId = GM_registerMenuCommand("Toggle (on)", toggle, 't');
+    // Modes (use menu to cycle between these):
+    // "hover": Enable chat input only when the cursor is hovering over it
+    // "strict": Disables chat input completely
+    // "off": Keep chat input enabled.
+    var modes = ["hover","strict", "off"];
+    var modeIndex = modes.length-1;
+    var menuShortcut = 'm';
+    var menuId;
+    switchMode(); // default: hover
 
     const channelObserver = new MutationObserver(channelObserverCallback);
     const serverObserver = new MutationObserver(serverObserverCallback);
     const options = {childList:true, attributes:true};
     addObserver(serverObserver,"div[class*='content-']");
-    addObserver(channelObserver,"div[class*='chat-']", disable);
+    serverObserverCallback(); // init
 
     function serverObserverCallback(mutationList, observer) { // when changing servers
         //console.log("server callback");
         addObserver(channelObserver,"div[class*='chat-']", disable);
+        addHoverFunc();
     }
     function channelObserverCallback(mutationList, observer) { // when changing channels
         //console.log("channel callback");
         disable();
+        addHoverFunc();
     }
 
     function addObserver(observer, query, onSuccess = function(){}) {
@@ -41,21 +49,23 @@
         }
     }
 
-    function toggle() {
-        disableTextArea ^= true;
-        if (disableTextArea) {
-            GM_unregisterMenuCommand(menuId);
-            menuId = GM_registerMenuCommand("Toggle (currently ON)", toggle, 't');
-            disable();
-        } else {
-            GM_unregisterMenuCommand(menuId);
-            menuId = GM_registerMenuCommand("Toggle (currently OFF)", toggle, 't');
-            enable();
+    function switchMode() {
+        modeIndex = (modeIndex + 1) % modes.length;
+        GM_unregisterMenuCommand(menuId);
+        menuId = GM_registerMenuCommand("Switch mode [current: " + modes[modeIndex] + "]", switchMode, menuShortcut);
+        switch (modes[modeIndex]){
+            case "hover":
+            case "strict":
+                disable();
+                break;
+            case "off":
+                enable();
+                break;
         }
     }
 
     function disable() {
-        if (disableTextArea) {
+        if (modes[modeIndex] != "off") {
             //console.log("disabled!");
             var textareaQuery = $("div[class*='slateTextArea']");
             if (textareaQuery.length) {
@@ -78,4 +88,26 @@
             setTimeout(enable,100);
         }
     }
+
+    function addHoverFunc() {
+        var textareaQuery = $("div[class*='scrollableContainer']");
+        if (textareaQuery.length) {
+            textareaQuery.hover(hoverEnter, hoverExit);
+        } else {
+            setTimeout(addHoverFunc,100);
+        }
+    }
+
+    function hoverEnter() {
+        if (modes[modeIndex] == "hover"){
+            enable();
+        }
+    }
+
+    function hoverExit() {
+        if (modes[modeIndex] == "hover"){
+            disable();
+        }
+    }
+
 })();
