@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      5.3
+// @version      5.4
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
 // @grant        none
 // @require      http://code.jquery.com/jquery-latest.js
+// @noframes
 // ==/UserScript==
 
 // Cookies (current session):
@@ -150,7 +151,7 @@
                 start();
             }
             const playlistObserver = new MutationObserver(observerCallback);
-            const observerOptions = {subtree:true, childList:true, attributes:true, characterData:true};
+            const observerOptions = {subtree:true, childList:true, characterData:true};
             initObservers(playlistObserver, observerOptions);
             playPrevious = getCookie("pytplir_playPrevious");
             if (playPrevious === "") { // cookie has not been set yet
@@ -175,7 +176,7 @@
             updateButtonState();
         }
 
-        function addButton() {
+        function addButton() { // Add button(s)
             withQuery(".ytd-playlist-panel-renderer > div[id=top-level-buttons]", "*", function(res) {
                 res.each(function() {
                     if (!$(this).find("#pytplir_div").length) {
@@ -205,7 +206,7 @@
             $("#pytplir_btn")[0].setAttribute("activated",playPrevious);
         }
 
-        function start() {
+        function start() { // Add button(s) and event listeners
             addButton();
             if (!playerListenersAdded) {
                 withQuery(".html5-main-video", ":visible", function(res) {
@@ -217,7 +218,7 @@
             }
         }
 
-        function withQuery(query,filter="*", onSuccess = function(r){}) {
+        function withQuery(query, filter="*", onSuccess = function(r){}) {
             var res;
             if (filter == "*") {
                 res = $(query);
@@ -228,7 +229,7 @@
                 onSuccess(res);
                 return res;
             } else { // not loaded yet => retry
-                setTimeout(function(){withQuery(query);}, 100);
+                setTimeout(function(){withQuery(query, filter, onSuccess)});
             }
         }
 
