@@ -1,40 +1,66 @@
 // ==UserScript==
 // @name         Disable Discord chat input
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.0
+// @version      4.0
 // @description  Avoid accidentally typing in chat
 // @author       Dragosarus
 // @match        *discord.com/*
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
+// @grant        GM.setValue
+// @grant        GM.getValue
 // @require      http://code.jquery.com/jquery-latest.js
 // ==/UserScript==
 
 (function() {
     'use strict';
+    var persist = true; // Remember selected mode across page refreshes and browser reloads
 
     // Modes (use menu to cycle between these):
     // "hover": Enable chat input only when the cursor is hovering over it
     // "strict": Disables chat input completely
     // "off": Keep chat input enabled.
-    var modes = ["hover","strict", "off"];
-    var modeIndex = modes.length-1;
+    var modes = ["hover", "strict", "off"];
     var menuShortcut = 'm';
+    var modeIndex;
     var menuId;
-    switchMode(); // default: hover
 
     const channelObserver = new MutationObserver(channelObserverCallback);
     const serverObserver = new MutationObserver(serverObserverCallback);
     const options = {childList:true, attributes:true};
-    addObserver(serverObserver,"div[class*='content-']");
-    serverObserverCallback(); // init
+    init();
 
-    function serverObserverCallback(mutationList, observer) { // when changing servers
+    async function init() {
+        // Will activate the mode of the next index (default: hover)
+        const modeIndex_default = modes.length - 1;
+
+        // Load stored value if available and persist is set to true
+        if (persist) {
+            var storedMode = await GM.getValue("mode", "hover");
+            modeIndex = modes.indexOf(storedMode);
+            if (modeIndex != -1) {
+                modeIndex = (modeIndex - 1) % modes.length;
+            } else { // Mode does not exist
+                modeIndex = modeIndex_default;
+            }
+        } else {
+            modeIndex = modeIndex_default;
+        }
+        start();
+    }
+
+    function start(){
+        switchMode();
+        addObserver(serverObserver,"div[class*='content-']");
+        serverObserverCallback(); // Init
+    }
+
+    function serverObserverCallback(mutationList, observer) { // When changing servers
         //console.log("server callback");
         addObserver(channelObserver,"div[class*='chat-']", disable);
         addHoverFunc();
     }
-    function channelObserverCallback(mutationList, observer) { // when changing channels
+    function channelObserverCallback(mutationList, observer) { // When changing channels
         //console.log("channel callback");
         disable();
         addHoverFunc();
@@ -51,6 +77,7 @@
 
     function switchMode() {
         modeIndex = (modeIndex + 1) % modes.length;
+        if (persist) {GM.setValue("mode",modes[modeIndex]);}
         GM_unregisterMenuCommand(menuId);
         menuId = GM_registerMenuCommand("Switch mode [current: " + modes[modeIndex] + "]", switchMode, menuShortcut);
         switch (modes[modeIndex]){
@@ -61,6 +88,9 @@
             case "off":
                 enable();
                 break;
+            default:
+                console.error("Disable Discord chat input: Unimplemented mode.");
+                break;
         }
     }
 
@@ -70,10 +100,10 @@
             var textareaQuery = $("div[class*='slateTextArea']");
             if (textareaQuery.length) {
                 textareaQuery.attr("contenteditable","false");
-                textareaQuery[0].style.removeProperty("-webkit-user-modify"); // needed for Chrome
-                textareaQuery.parent().parent()[0].style.setProperty("pointer-events","none"); // disable mouse events
+                textareaQuery[0].style.removeProperty("-webkit-user-modify"); // Needed for Chrome
+                textareaQuery.parent().parent()[0].style.setProperty("pointer-events","none"); // Disable mouse events
             } else {
-                setTimeout(disable,100);
+                setTimeout(disable, 100);
             }
         }
     }
@@ -85,7 +115,7 @@
             textareaQuery[0].style.setProperty("-webkit-user-modify", "read-write-plaintext-only");
             textareaQuery.parent().parent()[0].style.removeProperty("pointer-events");
         } else {
-            setTimeout(enable,100);
+            setTimeout(enable, 100);
         }
     }
 
@@ -94,7 +124,7 @@
         if (textareaQuery.length) {
             textareaQuery.hover(hoverEnter, hoverExit);
         } else {
-            setTimeout(addHoverFunc,100);
+            setTimeout(addHoverFunc, 100);
         }
     }
 
