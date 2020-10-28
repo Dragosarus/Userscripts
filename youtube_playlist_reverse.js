@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      5.4
+// @version      6.0
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -43,136 +43,141 @@
         var shuffle;
         var miniplayerFlag = false; // keep track of switches between miniplayer and normal mode
         var playerListenersAdded = false;
+        var buttonFailsafe = false; // used to readd button if it is removed immediately after being added
 
         // create button
+        var svgNS = "http://www.w3.org/2000/svg";
         var btn_div = document.createElement("div");
-        var bg_circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
-        var bg_circle_anim = document.createElementNS("http://www.w3.org/2000/svg","animate");
-        var arrow_up = document.createElementNS("http://www.w3.org/2000/svg","polygon");
-        var arrow_down = document.createElementNS("http://www.w3.org/2000/svg","polygon");
-        var btn_svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
-        var tt_svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
-        var tt_svg_fadein = document.createElementNS("http://www.w3.org/2000/svg","animate");
-        var tt_svg_fadeout = document.createElementNS("http://www.w3.org/2000/svg","animate");
-        var tt_rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
-        var tt_text = document.createElementNS("http://www.w3.org/2000/svg","text");
+        var bg_circle = document.createElementNS(svgNS, "circle");
+        var bg_circle_anim = document.createElementNS(svgNS, "animate");
+        var arrow_up = document.createElementNS(svgNS, "polygon");
+        var arrow_down = document.createElementNS(svgNS, "polygon");
+        var btn_svg = document.createElementNS(svgNS, "svg");
+        var tt_svg = document.createElementNS(svgNS, "svg");
+        var tt_svg_fadein = document.createElementNS(svgNS, "animate");
+        var tt_svg_fadeout = document.createElementNS(svgNS, "animate");
+        var tt_rect = document.createElementNS(svgNS, "rect");
+        var tt_text = document.createElementNS(svgNS, "text");
         var tt_div = document.createElement("div");
 
-        bg_circle_anim.setAttribute("attributeName","fill-opacity");
-        bg_circle_anim.setAttribute("values","0;0.1;0.2;0.1;0.0");
-        bg_circle_anim.setAttribute("dur","0.3s");
-        bg_circle_anim.setAttribute("restart","always");
-        bg_circle_anim.setAttribute("repeatCount","1");
-        bg_circle_anim.setAttribute("begin","indefinite");
-        bg_circle_anim.setAttribute("id","pytplir_bg_circle_anim");
-        bg_circle.setAttribute("cx","20");
-        bg_circle.setAttribute("cy","20");
-        bg_circle.setAttribute("r","20");
-        bg_circle.setAttribute("fill",circleColor);
-        bg_circle.setAttribute("fill-opacity","0");
-        bg_circle.appendChild(bg_circle_anim);
-        arrow_up.setAttribute("points","17,19 17,17 13,17 20,11 27,17 23,17 23,19");
-        arrow_up.setAttribute("id","pytplir_arrow_up");
-        arrow_down.setAttribute("points","17,21 17,23 13,23 20,29 27,23 23,23 23,21");
-        arrow_down.setAttribute("id","pytplir_arrow_down");
-
-        btn_svg.setAttribute("viewbox","0 0 40 40");
-        btn_svg.setAttribute("xmlns","http://www.w3.org/2000/svg");
-        btn_svg.setAttribute("width","40");
-        btn_svg.setAttribute("height","40");
-        btn_svg.setAttribute("style","cursor: pointer; margin-left: 8px;");
-        btn_svg.setAttribute("id","pytplir_btn");
-        btn_svg.appendChild(bg_circle);
-        btn_svg.appendChild(arrow_up);
-        btn_svg.appendChild(arrow_down);
-
-        tt_rect.setAttribute("x","0");
-        tt_rect.setAttribute("y","0");
-        tt_rect.setAttribute("rx","2");
-        tt_rect.setAttribute("ry","2");
-        tt_rect.setAttribute("width","110");
-        tt_rect.setAttribute("height","34");
-        tt_rect.setAttribute("fill",ttBGColor);
-        tt_rect.setAttribute("fill-opacity","0.9");
-
-        tt_text.setAttribute("x","8");
-        tt_text.setAttribute("y","22");
-        tt_text.setAttribute("font-family","Roboto, Noto, sans-serif");
-        tt_text.setAttribute("font-size","13px");
-        tt_text.setAttribute("fill",ttTextColor);
-        tt_text.setAttribute("style","user-select:none;");
-        tt_text.innerHTML = "Autoplay order";
-
-        tt_svg_fadein.setAttribute("attributeType","CSS");
-        tt_svg_fadein.setAttribute("attributeName","opacity");
-        tt_svg_fadein.setAttribute("values","0;1");
-        tt_svg_fadein.setAttribute("dur","0.1s");
-        tt_svg_fadein.setAttribute("restart","always");
-        tt_svg_fadein.setAttribute("repeatCount","1");
-        tt_svg_fadein.setAttribute("begin","indefinite");
-        tt_svg_fadein.setAttribute("id","pytplir_tt_fadein");
-        tt_svg_fadein.setAttribute("fill","freeze");
-        tt_svg_fadeout.setAttribute("attributeType","CSS");
-        tt_svg_fadeout.setAttribute("attributeName","opacity");
-        tt_svg_fadeout.setAttribute("values","1;0");
-        tt_svg_fadeout.setAttribute("dur","0.1s");
-        tt_svg_fadeout.setAttribute("restart","always");
-        tt_svg_fadeout.setAttribute("repeatCount","1");
-        tt_svg_fadeout.setAttribute("begin","indefinite");
-        tt_svg_fadeout.setAttribute("id","pytplir_tt_fadeout");
-        tt_svg_fadeout.setAttribute("fill","freeze");
-        tt_svg.setAttribute("viewbox","0 0 100 34");
-        tt_svg.setAttribute("xmlns","http://www.w3.org/2000/svg");
-        tt_svg.setAttribute("width","100");
-        tt_svg.setAttribute("height","34");
+        setAttributes(bg_circle_anim, [["attributeName", "fill-opacity"],
+                                       ["values", "0;0.1;0.2;0.1;0.0"],
+                                       ["dur", "0.3s"],
+                                       ["restart", "always"],
+                                       ["repeatCount", "1"],
+                                       ["begin", "indefinite"],
+                                       ["id", "pytplir_bg_circle_anim"]]);
+        setAttributes(bg_circle, [["cx", "20"],
+                                  ["cy", "20"],
+                                  ["r", "20"],
+                                  ["fill", circleColor],
+                                  ["fill-opacity", "0"]]);
+        setAttributes(arrow_up, [["points", "17,19 17,17 13,17 20,11 27,17 23,17 23,19"],
+                                 ["id", "pytplir_arrow_up"]]);
+        setAttributes(arrow_down, [["points", "17,21 17,23 13,23 20,29 27,23 23,23 23,21"],
+                                   ["id", "pytplir_arrow_down"]]);
+        setAttributes(btn_svg, [["xmlns", svgNS],
+                                 ["viewbox", "0 0 40 40"],
+                                 ["width", "40"],
+                                 ["height", "40"],
+                                 ["style", "cursor: pointer; margin-left: 8px;"],
+                                 ["id", "pytplir_btn"]]);
+        setAttributes(tt_rect, [["x", "0"],
+                                ["y", "0"],
+                                ["rx", "2"],
+                                ["ry", "2"],
+                                ["width", "110"],
+                                ["height", "34"],
+                                ["fill", ttBGColor],
+                                ["fill-opacity", "0.9"]]);
+        setAttributes(tt_text, [["x", "8"],
+                                ["y", "22"],
+                                ["font-family", "Roboto, Noto, sans-serif"],
+                                ["font-size", "13px"],
+                                ["fill", ttTextColor],
+                                ["style", "user-select:none;"]]);
+        setAttributes(tt_svg_fadein, [["attributeType", "CSS"],
+                                      ["attributeName", "opacity"],
+                                      ["values", "0;1"],
+                                      ["dur", "0.1s"],
+                                      ["restart", "always"],
+                                      ["repeatCount", "1"],
+                                      ["begin", "indefinite"],
+                                      ["id", "pytplir_tt_fadein"],
+                                      ["fill", "freeze"]]);
+        setAttributes(tt_svg_fadeout, [["attributeType", "CSS"],
+                                       ["attributeName", "opacity"],
+                                       ["values", "1;0"],
+                                       ["dur", "0.1s"],
+                                       ["restart", "always"],
+                                       ["repeatCount", "1"],
+                                       ["begin", "indefinite"],
+                                       ["id", "pytplir_tt_fadeout"],
+                                       ["fill", "freeze"]]);
         var tt_svg_offset = "position:absolute; top:13px; left:-32px; z-index:100; opacity:0.0;";
-        tt_svg.setAttribute("style","padding-left: 10px; fill:" + ttBGColor + "; " + tt_svg_offset);
-        tt_svg.setAttribute("id","pytplir_tt");
-        tt_svg.appendChild(tt_rect);
-        tt_svg.appendChild(tt_text);
-        tt_svg.appendChild(tt_svg_fadein);
-        tt_svg.appendChild(tt_svg_fadeout);
-        tt_div.setAttribute("style", "position:relative; width:0; height:0;");
+        setAttributes(tt_svg, [["viewbox", "0 0 100 34"],
+                               ["xmlns", "http://www.w3.org/2000/svg"],
+                               ["width", "100"],
+                               ["height", "34"],
+                               ["style", "padding-left: 10px; fill:" + ttBGColor + "; " + tt_svg_offset],
+                               ["id", "pytplir_tt"]]);
+        setAttributes(tt_div, [["style", "position:relative; width:0; height:0;"]]);
+        setAttributes(btn_div, [["id", "pytplir_div"]]);
+        tt_text.innerHTML = "Autoplay order";
+        bg_circle.appendChild(bg_circle_anim);
+        appendChildren(btn_svg, [bg_circle, arrow_up, arrow_down]);
+        appendChildren(tt_svg, [tt_rect, tt_text, tt_svg_fadein, tt_svg_fadeout]);
         tt_div.appendChild(tt_svg);
-
-        btn_div.setAttribute("id","pytplir_div");
-        btn_div.appendChild(btn_svg);
-        btn_div.appendChild(tt_div);
-        $(btn_svg).on("click",onButtonClick);
-        $(btn_svg).on("click",function(){$(this).parent().find("#pytplir_bg_circle_anim")[0].beginElement();});
-        $(btn_svg).on("mouseenter",function(){$(this).parent().find("#pytplir_tt_fadein")[0].beginElement();});
-        $(btn_svg).on("mouseleave",function(){$(this).parent().find("#pytplir_tt_fadeout")[0].beginElement();});
+        appendChildren(btn_div, [btn_svg, tt_div]);
+        $(btn_svg).on("click", onButtonClick);
+        $(btn_svg).on("click", function(){$(this).parent().find("#pytplir_bg_circle_anim")[0].beginElement();});
+        $(btn_svg).on("mouseenter", function(){$(this).parent().find("#pytplir_tt_fadein")[0].beginElement();});
+        $(btn_svg).on("mouseleave", function(){$(this).parent().find("#pytplir_tt_fadeout")[0].beginElement();});
 
         init();
 
+        function setAttributes(node, attributeValuePairs) { // [["id", "example"], ["width","20"], ...]
+            for (var attVal of attributeValuePairs){
+                node.setAttribute(attVal[0], attVal[1]);
+            }
+        }
+
+        function appendChildren(node, childList) {
+            for (var child of childList) {
+                node.appendChild(child);
+            }
+        }
+
         function init() {
             // the button needs to be re-added whenever the playlist is updated (e.g when a video is loaded or removed)
+            // somet
             function observerCallback(mutationList, observer) {
                 start();
             }
             const playlistObserver = new MutationObserver(observerCallback);
             const observerOptions = {subtree:true, childList:true, characterData:true};
-            initObservers(playlistObserver, observerOptions);
+            initObserver(playlistObserver, observerOptions);
             playPrevious = getCookie("pytplir_playPrevious");
             if (playPrevious === "") { // cookie has not been set yet
                 playPrevious = false; // inital state
-                setCookie("pytplir_playPrevious",playPrevious);
+                setCookie("pytplir_playPrevious", playPrevious);
             }
+
             start();
         }
 
-        function initObservers(observer, options) {
+        function initObserver(observer, options) {
             try {
                 observer.observe($(".ytd-watch-flexy #playlist").find("#playlist-action-menu")[0], options);
-                observer.observe($(".miniplayer #header-contents")[0],options);
+                observer.observe($("ytd-miniplayer")[0], options);
             } catch (e) {
-                setTimeout(function(){initObservers(observer)},100);
+                setTimeout(function(){initObserver(observer)}, 100);
             }
         }
 
         function onButtonClick() { // toggle
             playPrevious = !playPrevious;
-            setCookie("pytplir_playPrevious",playPrevious);
+            setCookie("pytplir_playPrevious", playPrevious);
             updateButtonState();
         }
 
@@ -182,6 +187,7 @@
                     if (!$(this).find("#pytplir_div").length) {
                         this.appendChild($(btn_div).clone(true)[0]);
                         updateButtonState();
+                        buttonFailsafe = true; // try to detect immediate removal
                     }
                 });
             });
@@ -190,20 +196,20 @@
         function updateButtonState() {
             if (playPrevious) { // play previous video
                 $("polygon[id=pytplir_arrow_up]").each(function() {
-                    this.setAttribute("style","fill:"+activeColor);
+                    this.setAttribute("style", "fill:"+activeColor);
                 });
                 $("polygon[id=pytplir_arrow_down]").each(function() {
-                    this.setAttribute("style","fill:"+inactiveColor);
+                    this.setAttribute("style", "fill:"+inactiveColor);
                 });
             } else { // play next video
                 $("polygon[id=pytplir_arrow_up]").each(function() {
-                    this.setAttribute("style","fill:"+inactiveColor);
+                    this.setAttribute("style", "fill:"+inactiveColor);
                 });
                 $("polygon[id=pytplir_arrow_down]").each(function() {
-                    this.setAttribute("style","fill:"+activeColor);
+                    this.setAttribute("style", "fill:"+activeColor);
                 });
             }
-            $("#pytplir_btn")[0].setAttribute("activated",playPrevious);
+            $("#pytplir_btn")[0].setAttribute("activated", playPrevious);
         }
 
         function start() { // Add button(s) and event listeners
@@ -211,7 +217,7 @@
             if (!playerListenersAdded) {
                 withQuery(".html5-main-video", ":visible", function(res) {
                     player = res[0];
-                    player.addEventListener("timeupdate",checkTime);
+                    player.addEventListener("timeupdate", checkTime);
                     player.addEventListener("play", addButton); // ensure button is added
                     playerListenersAdded = true;
                 });
@@ -234,7 +240,11 @@
         }
 
         function checkTime() {
-            if (!$("#pytplir_div").length) {return;} // button not loaded
+            if (!$("#pytplir_div").length && !buttonFailsafe) {return;} // button not loaded
+            else if (!$("#pytplir_div").length) { // button was removed
+                addButton();
+                buttonFailsafe = false; // should not happen more than once per video
+            }
 
             var timeLeft = player.duration - player.currentTime;
             var videoPlayer = $(".html5-video-player")[0];
@@ -299,7 +309,7 @@
                 if (ts.length) {ts = ts[0].innerHTML; }
             }
 
-            while (!elem.find("#unplayableText").prop("hidden") || (skipPremiere && !ts.includes(":"))) { // while unplayable (e.g. private) video is selected
+            while (!elem.find("#unplayableText").prop("hidden") || (skipPremiere && typeof(ts) == "string" && !ts.includes(":"))) { // while unplayable (e.g. private) video is selected
                 elem = elem.prev();
                 if (skipPremiere) {
                     ts = $(elem).find("span.ytd-thumbnail-overlay-time-status-renderer");
