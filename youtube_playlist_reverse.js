@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      6.0
+// @version      6.1
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http*://www.youtube.com/*
@@ -25,7 +25,7 @@
         // Determines when to load the next video.
         // Increase these if the redirect does not work as intended (i.e. fails to override Youtube's redirect),
         // Decreasing these will let you see more of the video before it redirects, but the redirect might stop working (consistently)
-        var redirectWhenTimeLeft = 0.3; // seconds before end of video
+        var redirectWhenTimeLeft = 0.3; // seconds before the end of the video
         var redirectWhenTimeLeft_miniplayer = 0.6;
         var skipPremiere = true; // Skip videos that have not been premiered yet
 
@@ -150,7 +150,6 @@
 
         function init() {
             // the button needs to be re-added whenever the playlist is updated (e.g when a video is loaded or removed)
-            // somet
             function observerCallback(mutationList, observer) {
                 start();
             }
@@ -196,17 +195,17 @@
         function updateButtonState() {
             if (playPrevious) { // play previous video
                 $("polygon[id=pytplir_arrow_up]").each(function() {
-                    this.setAttribute("style", "fill:"+activeColor);
+                    this.setAttribute("style", "fill:" + activeColor);
                 });
                 $("polygon[id=pytplir_arrow_down]").each(function() {
-                    this.setAttribute("style", "fill:"+inactiveColor);
+                    this.setAttribute("style", "fill:" + inactiveColor);
                 });
             } else { // play next video
                 $("polygon[id=pytplir_arrow_up]").each(function() {
-                    this.setAttribute("style", "fill:"+inactiveColor);
+                    this.setAttribute("style", "fill:" + inactiveColor);
                 });
                 $("polygon[id=pytplir_arrow_down]").each(function() {
-                    this.setAttribute("style", "fill:"+activeColor);
+                    this.setAttribute("style", "fill:" + activeColor);
                 });
             }
             $("#pytplir_btn")[0].setAttribute("activated", playPrevious);
@@ -240,10 +239,13 @@
         }
 
         function checkTime() {
-            if (!$("#pytplir_div").length && !buttonFailsafe) {return;} // button not loaded
-            else if (!$("#pytplir_div").length) { // button was removed
+            var noButton = !$("#pytplir_div").length;
+            if (noButton && !buttonFailsafe) {return;} // button not loaded
+            else if (noButton) { // button was removed
                 addButton();
-                buttonFailsafe = false; // should not happen more than once per video
+                if (!$("#pytplir_div").length) { // not playing from a playlist anymore
+                    buttonFailsafe = false; // let non-playlist videos exit checkTime() early
+                }
             }
 
             var timeLeft = player.duration - player.currentTime;
@@ -254,7 +256,7 @@
             }
             var miniplayerFlag = miniplayerActive;
             var shuffleEnabled = strToBool(shuffle.attributes["aria-pressed"].nodeValue);
-            try {videoPlayer.classList.contains("ad-showing");}
+            try {videoPlayer.classList.contains("ad-showing");} // ensure it will work below
             catch (TypeError) { // video player undefined
             	return;
             }
@@ -279,7 +281,7 @@
             }
         }
 
-        function getVidNum() { // returns integer array [current, total], e.g "32 / 152" => [32,152]
+        function getVidNum() { // returns integer array [current, total], e.g "32 / 152" => [32, 152]
             var vidNum_tmp;
             if (ytdApp.hasAttribute("miniplayer-active_")) {
                 vidNum_tmp = $("yt-formatted-string[id=owner-name]").children()[2].innerHTML;
@@ -309,7 +311,7 @@
                 if (ts.length) {ts = ts[0].innerHTML; }
             }
 
-            while (!elem.find("#unplayableText").prop("hidden") || (skipPremiere && typeof(ts) == "string" && !ts.includes(":"))) { // while unplayable (e.g. private) video is selected
+            while (!elem.find("#unplayableText").prop("hidden") || (skipPremiere && typeof(ts) == "string" && !ts.includes(":"))) { // while an unplayable (e.g. private) video is selected
                 elem = elem.prev();
                 if (skipPremiere) {
                     ts = $(elem).find("span.ytd-thumbnail-overlay-time-status-renderer");
@@ -346,3 +348,4 @@
         }
     });
 })();
+/*eslint-env jquery*/ // stop eslint from showing "'$' is not defined" warnings
