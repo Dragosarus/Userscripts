@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Discord sidebars
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      2.0
+// @version      2.1
 // @description  Give the chat more screen space
 // @author       Dragosarus
 // @match        *discord.com/*
@@ -15,63 +15,42 @@
     var hide = {
         serverSidebar : true,
         channelSidebar: true,
-        memberSidebar : true // also adds 2nd button
+        memberSidebar : true // note: there is a "Member List" button in the top-right corner
     };
 
     var serverSelector = "nav[aria-label='Servers sidebar']";
     var channelSelector = "div[class*='sidebar']";
     var memberSelector = "div[class*='membersWrap']";
+    var memberIconSelector = "div[aria-label = 'Member List']"
     var baseSelector = "div[class*='base']"; // needed when hiding server sidebar
-    var chatSelector = "div[class*='chat']"; // needed for observer
 
     var hideMenu = "Hide sidebars";
     var showMenu = "Show sidebars";
     var memberToggleMenu = "Toggle member sidebar"; // + " [current: (in)visible]"
     var hideSidebarMenuShortcut = 's';
-    var memberToggleMenuShortcut = 't';
 
     var hideSidebarMenuId;
     var memberToggleMenuId;
     var baseOffset; // e.g. "72px"
 
     var sidebarsHidden = false;
-    var memberSidebarHidden = false; // overrides sidebarsHidden
+    var memberSidebarHidden; // from the "Member List" button
     var selectors = {
         serverSidebar: serverSelector,
         channelSidebar: channelSelector,
         memberSidebar: memberSelector
     };
 
-    const memberObserver = new MutationObserver(memberObserverCallback);
-    const options = {attributes:true, childList:true};
-
     init();
 
     function init() {
-        updateMemberToggleMenu(); // if hide.memberSidebar == true
-        updateHideSidebarMenu();
-    }
-
-    // Called when switching servers/channels
-    function memberObserverCallback() {
-        setSidebar(memberSelector, !memberSidebarHidden);
-    }
-
-    function onMemberToggleMenuClick() {
-        // (re-)activate observer
-        memberObserver.observe($(chatSelector)[0], options);
-
-        if (!(sidebarsHidden)) {
-            setSidebar(memberSelector, memberSidebarHidden);
-        }
-        memberSidebarHidden ^= true;
-
-        // Update menus (both of them to preserve order)
-        updateMemberToggleMenu();
         updateHideSidebarMenu();
     }
 
     function onHideSidebarMenuClick() {
+        // Read state of "Member List" button
+        memberSidebarHidden = $(memberIconSelector).filter("div[class *= 'selected']").length == 0;
+
         // Toggle visibility of sidebars
         for (var sidebar in selectors) {
             // hideMemberSidebar = memberSidebarHidden || sidebarsHidden
@@ -96,15 +75,6 @@
 
         // Update menu
         updateHideSidebarMenu();
-    }
-
-    function updateMemberToggleMenu() {
-        if (hide.memberSidebar) {
-            GM_unregisterMenuCommand(memberToggleMenuId);
-            var v = memberSidebarHidden ? "in" : "";
-            memberToggleMenuId = GM_registerMenuCommand(memberToggleMenu + " [current: " + v + "visible]",
-                                                        onMemberToggleMenuClick, memberToggleMenuShortcut);
-        }
     }
 
     function updateHideSidebarMenu() {
