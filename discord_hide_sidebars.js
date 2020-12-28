@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Discord sidebars
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      1.0
+// @version      2.0
 // @description  Give the chat more screen space
 // @author       Dragosarus
 // @match        *discord.com/*
@@ -15,39 +15,70 @@
     var hide = {
         serverSidebar : true,
         channelSidebar: true,
-        memberSidebar : true
+        memberSidebar : true // also adds 2nd button
     };
 
     var serverSelector = "nav[aria-label='Servers sidebar']";
     var channelSelector = "div[class*='sidebar']";
     var memberSelector = "div[class*='membersWrap']";
-    var baseSelector = "div[class*='base']";
+    var baseSelector = "div[class*='base']"; // needed when hiding server sidebar
+    var chatSelector = "div[class*='chat']"; // needed for observer
+
     var hideMenu = "Hide sidebars";
     var showMenu = "Show sidebars";
-    var menuShortcut = 's';
+    var memberToggleMenu = "Toggle member sidebar"; // + " [current: (in)visible]"
+    var hideSidebarMenuShortcut = 's';
+    var memberToggleMenuShortcut = 't';
 
-    var menuId;
-    var baseOffset;
+    var hideSidebarMenuId;
+    var memberToggleMenuId;
+    var baseOffset; // e.g. "72px"
 
     var sidebarsHidden = false;
+    var memberSidebarHidden = false; // overrides sidebarsHidden
     var selectors = {
         serverSidebar: serverSelector,
         channelSidebar: channelSelector,
         memberSidebar: memberSelector
     };
 
-    // Init
-    menuId = GM_registerMenuCommand(hideMenu, onMenuClick, menuShortcut);
+    const memberObserver = new MutationObserver(memberObserverCallback);
+    const options = {attributes:true, childList:true};
 
-    function onMenuClick() {
+    init();
+
+    function init() {
+        updateMemberToggleMenu(); // if hide.memberSidebar == true
+        updateHideSidebarMenu();
+    }
+
+    // Called when switching servers/channels
+    function memberObserverCallback() {
+        setSidebar(memberSelector, !memberSidebarHidden);
+    }
+
+    function onMemberToggleMenuClick() {
+        // (re-)activate observer
+        memberObserver.observe($(chatSelector)[0], options);
+
+        if (!(sidebarsHidden)) {
+            setSidebar(memberSelector, memberSidebarHidden);
+        }
+        memberSidebarHidden ^= true;
+
+        // Update menus (both of them to preserve order)
+        updateMemberToggleMenu();
+        updateHideSidebarMenu();
+    }
+
+    function onHideSidebarMenuClick() {
         // Toggle visibility of sidebars
         for (var sidebar in selectors) {
+            // hideMemberSidebar = memberSidebarHidden || sidebarsHidden
+            if (sidebar == "memberSidebar" && memberSidebarHidden) {continue;}
+
             if (hide[sidebar]) {
-                if (sidebarsHidden) {
-                    showSidebar(selectors[sidebar]);
-                } else {
-                    hideSidebar(selectors[sidebar]);
-                }
+                setSidebar(selectors[sidebar], sidebarsHidden);
             }
         }
 
@@ -61,18 +92,33 @@
                 base.css("left", "0px");
             }
         }
-
-        sidebarsHidden ^= true; // toggle
+        sidebarsHidden ^= true;
 
         // Update menu
-        GM_unregisterMenuCommand(menuId);
-        var menu;
-        if (sidebarsHidden) {
-            menu = showMenu;
-        } else {
-            menu = hideMenu;
+        updateHideSidebarMenu();
+    }
+
+    function updateMemberToggleMenu() {
+        if (hide.memberSidebar) {
+            GM_unregisterMenuCommand(memberToggleMenuId);
+            var v = memberSidebarHidden ? "in" : "";
+            memberToggleMenuId = GM_registerMenuCommand(memberToggleMenu + " [current: " + v + "visible]",
+                                                        onMemberToggleMenuClick, memberToggleMenuShortcut);
         }
-        menuId = GM_registerMenuCommand(menu, onMenuClick, menuShortcut);
+    }
+
+    function updateHideSidebarMenu() {
+        GM_unregisterMenuCommand(hideSidebarMenuId);
+        var menu = sidebarsHidden ? showMenu : hideMenu;
+        hideSidebarMenuId = GM_registerMenuCommand(menu, onHideSidebarMenuClick, hideSidebarMenuShortcut);
+    }
+
+    function setSidebar(selector, boolValue) {
+        if (boolValue) {
+            showSidebar(selector);
+        } else {
+            hideSidebar(selector);
+        }
     }
 
     function hideSidebar(selector) {
