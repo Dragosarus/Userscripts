@@ -1,16 +1,20 @@
 // ==UserScript==
 // @name         Disable Discord chat input
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      4.0
+// @version      4.1
 // @description  Avoid accidentally typing in chat
 // @author       Dragosarus
-// @match        *discord.com/*
+// @match        http://discord.com/*
+// @match        https://discord.com/*
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @require      http://code.jquery.com/jquery-latest.js
 // ==/UserScript==
+
+// NOTE: Does not work with Greasemonkey as it neither supports GM_registerMenuCommand nor GM_unregisterMenuCommand.
+// Use Tampermonkey or Violentmonkey instead.
 
 (function() {
     'use strict';
@@ -141,3 +145,4 @@
     }
 
 })();
+/*eslint-env jquery*/ // stop eslint from showing "'$' is not defined" warnings
