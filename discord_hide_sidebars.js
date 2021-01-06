@@ -1,14 +1,18 @@
 // ==UserScript==
 // @name         Hide Discord sidebars
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      2.1
+// @version      2.2
 // @description  Give the chat more screen space
 // @author       Dragosarus
-// @match        *discord.com/*
+// @match        http:discord.com/*
+// @match        https:discord.com/*
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // @require      http://code.jquery.com/jquery-latest.js
 // ==/UserScript==
+
+// NOTE: Does not work with Greasemonkey as it neither supports GM_registerMenuCommand nor GM_unregisterMenuCommand.
+// Use Tampermonkey or Violentmonkey instead.
 
 (function() {
     'use strict';
