@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      2.0
+// @version      2.1
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
-// @match        http*://www.youtube.com/*
+// @match        http://www.youtube.com/*
+// @match        https://www.youtube.com/*
 // @grant        none
 // @require      http://code.jquery.com/jquery-latest.js
 // ==/UserScript==
@@ -295,3 +296,4 @@
     }
 
 })();
+/*eslint-env jquery*/ // stop eslint from showing "'$' is not defined" warnings
