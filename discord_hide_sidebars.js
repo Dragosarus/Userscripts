@@ -4,8 +4,8 @@
 // @version      2.2
 // @description  Give the chat more screen space
 // @author       Dragosarus
-// @match        http:discord.com/*
-// @match        https:discord.com/*
+// @match        http://discord.com/*
+// @match        https://discord.com/*
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // @require      http://code.jquery.com/jquery-latest.js
