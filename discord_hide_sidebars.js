@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Discord sidebars
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      2.2
+// @version      2.3
 // @description  Give the chat more screen space
 // @author       Dragosarus
 // @match        http://discord.com/*
