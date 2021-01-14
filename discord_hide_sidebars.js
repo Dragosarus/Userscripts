@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hide Discord sidebars
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      2.3
+// @version      2.4
 // @description  Give the chat more screen space
 // @author       Dragosarus
 // @match        http://discord.com/*
@@ -22,10 +22,14 @@
         memberSidebar : true // note: there is a "Member List" button in the top-right corner
     };
 
-    var serverSelector = "nav[aria-label='Servers sidebar']";
+    // Can't use 'aria-label' to identify the Members List button as its value depends on your language settings,
+    // so (part of) the icon will have to be used instead
+    var memberIconPath = "M14 8.00598C14 10.211 12.206 12.006 10 12.006C7.795 12.006 6 10.211 6 8.00598C6 5.80098 7.794 4.00598 10 4.00598C12.206 4.00598 14 5.80098 14 8.00598ZM2 19.006C2 15.473 5.29 13.006 10 13.006C14.711 13.006 18 15.473 18 19.006V20.006H2V19.006Z";
+
+    var serverSelector = "nav[class*='guilds']";
     var channelSelector = "div[class*='sidebar']";
     var memberSelector = "div[class*='membersWrap']";
-    var memberIconSelector = "div[aria-label = 'Member List']"
+    var memberIconSelector = "div[class*='clickable']:has(svg > path[d='" + memberIconPath + "'])"
     var baseSelector = "div[class*='base']"; // needed when hiding server sidebar
 
     var hideMenu = "Hide sidebars";
