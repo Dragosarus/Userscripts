@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      6.2
+// @version      7.0
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -17,6 +17,7 @@
 /* NOTES:
  *    - If the button is not displayed (but the script is running), pause and unpause the video.
  *    - If it still does not appear, reload the page.
+ *    - If it *still* does not appear, let me know through Greasy Fork or GitHub.
  *    - If the button is displayed but does not work properly/consistently, increase the value of redirectWhenTimeLeft.
 */
 
@@ -36,6 +37,23 @@
         var ttBGColor = "rgb(100,100,100)";
         var ttTextColor = "rgb(237,240,243)";
 
+        var selectors = {
+            "buttonLocation":            ".ytd-playlist-panel-renderer > div[id=top-level-buttons-computed]",
+            "content":                   "#content",
+            "player":                    ".html5-main-video",
+            "miniplayerDiv":             "div.miniplayer",
+            "playlistButtons":           ".ytd-watch-flexy #playlist #playlist-action-menu",
+            "playlistButtonsMiniplayer": "ytd-playlist-panel-renderer.ytd-miniplayer #playlist-action-menu",
+            "playlistCurrentVideo":      "ytd-playlist-panel-video-renderer[selected]",
+            "playlistVideos":            "#publisher-container span.index-message",
+            "playlistVideosMiniplayer":  "yt-formatted-string[id=owner-name] :nth-child(3)",
+            "shuffleButton":             "path[d='M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z']",
+            "timestamp":                 "span.ytd-thumbnail-overlay-time-status-renderer",
+            "videoPlayer":               ".html5-video-player"
+        }
+
+        var debug = false;
+
         var player;
         var playPrevious;
         var ytdApp = $("ytd-app")[0];
@@ -44,7 +62,6 @@
         var shuffle;
         var miniplayerFlag = false; // keep track of switches between miniplayer and normal mode
         var playerListenersAdded = false;
-        var buttonFailsafe = false; // used to readd button if it is removed immediately after being added
 
         // create button
         var svgNS = "http://www.w3.org/2000/svg";
@@ -152,6 +169,7 @@
         function init() {
             // the button needs to be re-added whenever the playlist is updated (e.g when a video is loaded or removed)
             function observerCallback(mutationList, observer) {
+                debugLog("Observer triggered!")
                 start();
             }
             const playlistObserver = new MutationObserver(observerCallback);
@@ -168,8 +186,8 @@
 
         function initObserver(observer, options) {
             try {
-                observer.observe($(".ytd-watch-flexy #playlist").find("#playlist-action-menu")[0], options);
-                observer.observe($("ytd-miniplayer")[0], options);
+                observer.observe($(selectors.playlistVideos)[0], options);
+                observer.observe($(selectors.playlistVideosMiniplayer)[0], options);
             } catch (e) {
                 setTimeout(function(){initObserver(observer)}, 100);
             }
@@ -182,15 +200,17 @@
         }
 
         function addButton() { // Add button(s)
-            withQuery(".ytd-playlist-panel-renderer > div[id=top-level-buttons]", "*", function(res) {
+            debugLog("addButton start")
+            withQuery(selectors.buttonLocation, "*", function(res) {
                 res.each(function() {
                     if (!$(this).find("#pytplir_div").length) {
                         this.appendChild($(btn_div).clone(true)[0]);
                         updateButtonState();
-                        buttonFailsafe = true; // try to detect immediate removal
+                        debugLog("button added");
                     }
                 });
             });
+            debugLog("addButton finish")
         }
 
         function updateButtonState() {
@@ -214,8 +234,9 @@
 
         function start() { // Add button(s) and event listeners
             addButton();
+            debugLog("playerListenersAdded = " + playerListenersAdded);
             if (!playerListenersAdded) {
-                withQuery(".html5-main-video", ":visible", function(res) {
+                withQuery(selectors.player, ":visible", function(res) {
                     player = res[0];
                     player.addEventListener("timeupdate", checkTime);
                     player.addEventListener("play", addButton); // ensure button is added
@@ -240,23 +261,30 @@
         }
 
         function checkTime() {
-            var noButton = !$("#pytplir_div").length;
-            if (noButton && !buttonFailsafe) {return;} // button not loaded
+            var miniplayerActive = ytdApp.hasAttribute("miniplayer-active_");
+            var context = miniplayerActive ? selectors.miniplayerDiv : selectors.content;
+            var buttonSelector = context + " " + selectors.buttonLocation + " #pytplir_div";
+            var noButton = !$(buttonSelector).length;
+            var playlistHeaderQuery = miniplayerActive ? $(selectors.playlistVideosMiniplayer).parent() : $(selectors.playlistVideos).parent();
+            var playlistVisible = playlistHeaderQuery.length && playlistHeaderQuery.is(":visible");
+
+            // exit early when not watching a playlist
+            if (!playlistVisible) {return;} // button not loaded
             else if (noButton) { // button was removed
+                debugLog("failsafe: adding button");
                 addButton();
-                if (!$("#pytplir_div").length) { // not playing from a playlist anymore
-                    buttonFailsafe = false; // let non-playlist videos exit checkTime() early
-                }
             }
 
+            debugLog("checkTime: miniplayer: " + miniplayerActive +
+                     ", button == " + !noButton);
+
             var timeLeft = player.duration - player.currentTime;
-            var videoPlayer = $(".html5-video-player")[0];
-            var miniplayerActive = ytdApp.hasAttribute("miniplayer-active_");
+            var videoPlayer = $(selectors.videoPlayer)[0];
+
             if (!shuffle || (miniplayerActive != miniplayerFlag)) { // wysiwyg
-                shuffle = $("path[d='M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z']").filter(":visible").parents("button[aria-pressed]")[0];
+                shuffle = $(selectors.shuffleButton).filter(":visible").parents("button[aria-pressed]")[0];
             }
             var miniplayerFlag = miniplayerActive;
-            var shuffleEnabled = strToBool(shuffle.attributes["aria-pressed"].nodeValue);
             try {videoPlayer.classList.contains("ad-showing");} // ensure it will work below
             catch (TypeError) { // video player undefined
             	return;
@@ -269,7 +297,9 @@
                 redirectTime = redirectWhenTimeLeft;
             }
 
-            if (timeLeft < redirectTime && !redirectFlag && playPrevious && !shuffleEnabled && !player.hasAttribute("loop") && !videoPlayer.classList.contains("ad-showing")) {
+            var shuffleEnabled = strToBool(shuffle.attributes["aria-pressed"].nodeValue);
+            if (timeLeft < redirectTime && !redirectFlag && playPrevious && !shuffleEnabled && !player.hasAttribute("loop")
+                    && !videoPlayer.classList.contains("ad-showing")) {
                 // attempt to prevent the default redirect from triggering
                 player.pause();
                 player.currentTime -= 2;
@@ -285,9 +315,9 @@
         function getVidNum() { // returns integer array [current, total], e.g "32 / 152" => [32, 152]
             var vidNum_tmp;
             if (ytdApp.hasAttribute("miniplayer-active_")) {
-                vidNum_tmp = $("yt-formatted-string[id=owner-name]").children()[2].innerHTML;
+                vidNum_tmp = $(selectors.playlistVideosMiniplayer)[0].innerHTML;
             } else {
-                vidNum_tmp = $("#publisher-container").find("span.index-message")[0].innerHTML;
+                vidNum_tmp = $(selectors.playlistVideos)[0].innerHTML;
             }
             return vidNum_tmp.split(" / ").map(x => parseInt(x));
         }
@@ -302,20 +332,21 @@
         function getPreviousURL(){ // returns <a> element
             var elem;
             if (ytdApp.hasAttribute("miniplayer-active_")) { // avoid being forced out of miniplayer mode on video load
-                elem = $("div.miniplayer").find("ytd-playlist-panel-video-renderer[selected]").prev();
+                elem = $(selectors.miniplayerDiv).find(selectors.playlistCurrentVideo).prev();
             } else {
-                elem = $("#content").find("ytd-playlist-panel-video-renderer[selected]").prev();
+                elem = $(selectors.content).find(selectors.playlistCurrentVideo).prev();
             }
 
             if (skipPremiere) {
-                var ts = $(elem).find("span.ytd-thumbnail-overlay-time-status-renderer");
+                var ts = $(elem).find(selectors.timestamp);
                 if (ts.length) {ts = ts[0].innerHTML; }
             }
 
-            while (!elem.find("#unplayableText").prop("hidden") || (skipPremiere && typeof(ts) == "string" && !ts.includes(":"))) { // while an unplayable (e.g. private) video is selected
+            while (!elem.find("#unplayableText").prop("hidden") ||
+                   (skipPremiere && typeof(ts) == "string" && !ts.includes(":"))) { // while an unplayable (e.g. private) video is selected
                 elem = elem.prev();
                 if (skipPremiere) {
-                    ts = $(elem).find("span.ytd-thumbnail-overlay-time-status-renderer");
+                    ts = $(elem).find(selectors.timestamp);
                     if (ts.length) { ts = ts[0].innerHTML; }
                 }
             }
@@ -324,6 +355,12 @@
 
         function strToBool(str) {
             return str.toLowerCase() == "true";
+        }
+
+        function debugLog(msg){
+            if (debug) {
+                console.log("pytplir: " + msg);
+            };
         }
 
         // adapted from https://www.w3schools.com/js/js_cookies.asp
