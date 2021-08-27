@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      2.1
+// @version      2.2
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
 // @match        https://www.youtube.com/*
 // @grant        none
+// @noframes
 // @require      http://code.jquery.com/jquery-latest.js
 // ==/UserScript==
 
@@ -40,6 +41,7 @@
     var errorFlag = false;
     var direction;
     var incompleteFlag = false; // A playlist only displays the 199 previous+next entries in the playlist.
+    var miniplayerActive = false;
     const DOWN = 0; // direction
     const UP = 1; // direction
 
@@ -68,7 +70,7 @@
     }
 
     function check() {
-        if (!$("#drypt_label").length || ($("ytd-app")[0].hasAttribute("miniplayer-active_") && !$("#drypt_label_miniplayer").length)) {
+        if (!$("#drypt_label").length || (miniplayerActive && !$("#drypt_label_miniplayer").length)) {
             update();
         }
         if ($("#pytplir_btn").length) {
@@ -84,6 +86,7 @@
 
         updateFlagTime = Date.now();
         direction = getDirection();
+        miniplayerActive = $("ytd-app")[0].hasAttribute("miniplayer-active_") || $("ytd-app")[0].hasAttribute("miniplayer-active");
         var playlistEntry = getCurrentEntry();
         if (!playlistEntry) {return;}
 
@@ -106,7 +109,7 @@
     function getCurrentEntry(){ // returns <ytd-playlist-panel-video-renderer> element
         var elem;
         try {
-            if ($("ytd-app")[0].hasAttribute("miniplayer-active_")) {
+            if (miniplayerActive) {
                 return $("div.miniplayer").find("ytd-playlist-panel-video-renderer[selected]")[0];
             } else {
                 return $("#content").find("ytd-playlist-panel-video-renderer[selected]")[0];
@@ -148,7 +151,7 @@
 
     function getVidNum() { // returns integer array [current, total], e.g "32 / 152" => [32,152]
         var vidNum_tmp;
-        if ($("ytd-app")[0].hasAttribute("miniplayer-active_")) {
+        if (miniplayerActive) {
             vidNum_tmp = $("yt-formatted-string[id=owner-name]").children()[2].innerHTML;
         } else {
             vidNum_tmp = $("#publisher-container").find("span.index-message")[0].innerHTML;
@@ -214,7 +217,7 @@
         if (time == "") {return;} // this is apparently possible
 
         var middle = incompleteFlag ? incompleteIndicator : completeIndicator; // e.g "(more than " or "( "
-        if (!$("ytd-app")[0].hasAttribute("miniplayer-active_")) {
+        if (!miniplayerActive) {
             if (!$("#drypt_label").length) {
                 var label = document.createElement("a");
                 var textColor = "rgb(237,240,243)";
