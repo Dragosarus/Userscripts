@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      7.2
+// @version      7.3
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -263,7 +263,7 @@
         }
 
         function checkTime() {
-            var miniplayerActive = ytdApp.hasAttribute("miniplayer-active_");
+            var miniplayerActive = ytdApp.hasAttribute("miniplayer-active_") || ytdApp.hasAttribute("miniplayer-active");
             var context = miniplayerActive ? selectors.miniplayerDiv : selectors.content;
             var buttonSelector = context + " " + selectors.buttonLocation + " #pytplir_div";
             var noButton = !$(buttonSelector).length;
@@ -283,27 +283,30 @@
             var timeLeft = player.duration - player.currentTime;
             var videoPlayer = $(selectors.videoPlayer)[0];
 
+            var redirectTime;
+            var shuffleContext;
+            if (miniplayerActive) {
+                redirectTime = redirectWhenTimeLeft_miniplayer;
+                shuffleContext = selectors.playlistButtonsMiniplayer;
+            } else {
+                redirectTime = redirectWhenTimeLeft;
+                shuffleContext = selectors.playlistButtons;
+            }
+
             if (!shuffle || (miniplayerActive != miniplayerFlag)) { // wysiwyg
-                shuffle = $(selectors.shuffleButtonActive).parents("button[aria-pressed]");
+                shuffle = $(shuffleContext + " " + selectors.shuffleButtonActive).parents("button[aria-pressed]");
                 if (!shuffle.length) { // shuffle not activated or new UI has not been pushed to the user yet
-                    shuffle = $(selectors.shuffleButtonInactive).parents("button[aria-pressed]");
+                    shuffle = $(shuffleContext + " " + selectors.shuffleButtonInactive).parents("button[aria-pressed]");
                     if (!shuffle.length) { // new UI not pushed to user
                         shuffle = $(selectors.shuffleButtonLegacy).filter(":visible").parents("button[aria-pressed]");
                     }
                 }
                 shuffle = shuffle[0];
+                miniplayerFlag = miniplayerActive;
             }
-            var miniplayerFlag = miniplayerActive;
             try {videoPlayer.classList.contains("ad-showing");} // ensure it will work below
             catch (TypeError) { // video player undefined
             	return;
-            }
-
-            var redirectTime;
-            if (miniplayerActive) {
-                redirectTime = redirectWhenTimeLeft_miniplayer;
-            } else {
-                redirectTime = redirectWhenTimeLeft;
             }
 
             var shuffleEnabled = strToBool(shuffle.attributes["aria-pressed"].nodeValue);
