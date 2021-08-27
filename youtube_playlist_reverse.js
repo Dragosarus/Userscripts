@@ -47,7 +47,8 @@
             "playlistCurrentVideo":      "ytd-playlist-panel-video-renderer[selected]",
             "playlistVideos":            "#publisher-container span.index-message",
             "playlistVideosMiniplayer":  "yt-formatted-string[id=owner-name] :nth-child(3)",
-            "shuffleButton":             "path[d='M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z']",
+            "shuffleButtonLegacy":       "path[d='M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z']",
+            "shuffleButton":             "path[d='M18.15,13.65l3.85,3.85l-3.85,3.85l-0.71-0.71L20.09,18H19c-2.84,0-5.53-1.23-7.39-3.38l0.76-0.65 C14.03,15.89,16.45,17,19,17h1.09l-2.65-2.65L18.15,13.65z M19,7h1.09l-2.65,2.65l0.71,0.71l3.85-3.85l-3.85-3.85l-0.71,0.71 L20.09,6H19c-3.58,0-6.86,1.95-8.57,5.09l-0.73,1.34C8.16,15.25,5.21,17,2,17v1c3.58,0,6.86-1.95,8.57-5.09l0.73-1.34 C12.84,8.75,15.79,7,19,7z M8.59,9.98l0.75-0.66C7.49,7.21,4.81,6,2,6v1C4.52,7,6.92,8.09,8.59,9.98z']",
             "timestamp":                 "span.ytd-thumbnail-overlay-time-status-renderer",
             "videoPlayer":               ".html5-video-player"
         }
@@ -282,7 +283,11 @@
             var videoPlayer = $(selectors.videoPlayer)[0];
 
             if (!shuffle || (miniplayerActive != miniplayerFlag)) { // wysiwyg
-                shuffle = $(selectors.shuffleButton).filter(":visible").parents("button[aria-pressed]")[0];
+                shuffle = $(selectors.shuffleButton);
+                if (shuffle == undefined) { // new UI has not been pushed to the user yet
+                    shuffle = $(selectors.shuffleButtonLegacy);
+                }
+                shuffle = shuffle.filter(":visible").parents("button[aria-pressed]")[0];
             }
             var miniplayerFlag = miniplayerActive;
             try {videoPlayer.classList.contains("ad-showing");} // ensure it will work below
