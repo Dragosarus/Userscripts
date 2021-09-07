@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.0
+// @version      3.1
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -29,14 +29,18 @@
     const showPercentage = false; // e.g. [42% done] (will be shown to the right of the time)
     const percentageFormat = 0;
 
+    /* true: The duration of the current video is ignored when determining the time left
+     * false: The duration of the current video is added when determining the time left
+    */
+    const treatCurrentVideoAsWatched = false;
+
     const timeFormat0_decimalPlaces = 2;
     const timeFormat0_hourThreshold = 3600; // e.g "3.50" hours instead of "210.00 minutes" or "12600 seconds"
-    const timeFormat0_minuteThreshold = 60; // e.g "2.50" minutes instead of "150.00 seconds"
+    const timeFormat0_minuteThreshold = 60; // e.g "2.50" minutes instead of "150 seconds"
     const timeFormat1_spacing = true; // e.g 1h 23m 2s instead of 1h23m2s
     const timeFormat1_forceFull = false; // e.g 0h3m2s instead of 3m2s, 3h0m50s instead of 3h50s, etc
     const timeFormat2_forceFull = false; // e.g 0:03:02 instead of 3:02
 
-    const includeCurrentVideo = true; // whether the length of the current video should be included
     const before = " - "; // ::before
     const before_miniplayer = " • ";
     const updateCooldown = 2500; // limit how often update() is run (milliseconds)
@@ -128,17 +132,20 @@
         direction_global = getDirection();
         incompleteFlag = false;
         incompleteFlagR = false;
-        if (!includeCurrentVideo) {
+        if (treatCurrentVideoAsWatched) {
             playlistEntry = getNextEntry(playlistEntry, direction_global);
         }
 
         time_total_s = 0;
         time_total_s_elapsed = 0;
-        if (playlistEntry){
+        if (playlistEntry) {
             addTime(playlistEntry, direction_global);
-        }
-        if (showPercentage) { // also need to sum the video durations in the other direction
-            addTime(playlistEntry, !direction_global);
+            if (showPercentage) { // also need to sum the video durations in the other direction
+                var next = getNextEntry(playlistEntry,!direction_global);
+                if (next) {
+                    addTime(next, !direction_global);
+                }
+            }
         }
 
         if (!errorFlag){
@@ -284,7 +291,14 @@
                     percentage = time_total_s;
                     break;
             }
-            percentage = (100 * percentage / playlistTime).toFixed(percentage_decimalPlaces);
+            if (playlistTime != 0){
+                percentage = 100 * percentage / playlistTime;
+                if (!Number.isInteger(percentage)) {
+                    percentage = percentage.toFixed(percentage_decimalPlaces);
+                }
+            } else { // treatCurrentVideoAsWatched == true and current video is first/last in playlist
+                percentage = 100;
+            }
             percentageString = percentage_before + percentage + percentage_after[percentageFormat];
         }
 
