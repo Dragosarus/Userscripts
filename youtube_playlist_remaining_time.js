@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.1
+// @version      3.2
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -297,7 +297,7 @@
                     percentage = percentage.toFixed(percentage_decimalPlaces);
                 }
             } else { // treatCurrentVideoAsWatched == true and current video is first/last in playlist
-                percentage = 100;
+                percentage = percentageFormat ? 0 : 100;
             }
             percentageString = percentage_before + percentage + percentage_after[percentageFormat];
         }
