@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      7.3
+// @version      7.4
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -38,7 +38,7 @@
         var ttTextColor = "rgb(237,240,243)";
 
         var selectors = {
-            "buttonLocation":            ".ytd-playlist-panel-renderer > div[id=top-level-buttons-computed]",
+            "buttonLocation":            "div[id=playlist-action-menu] > .ytd-playlist-panel-renderer > div[id=top-level-buttons-computed]",
             "content":                   "#content",
             "player":                    ".html5-main-video",
             "miniplayerDiv":             "div.miniplayer",
@@ -309,7 +309,12 @@
             	return;
             }
 
-            var shuffleEnabled = strToBool(shuffle.attributes["aria-pressed"].nodeValue);
+            var shuffleEnabled;
+            try {
+                shuffleEnabled = strToBool(shuffle.attributes["aria-pressed"].nodeValue);
+            } catch (TypeError) { // e.g. when using Queues
+                shuffleEnabled = false;
+            }
             if (timeLeft < redirectTime && !redirectFlag && playPrevious && !shuffleEnabled && !player.hasAttribute("loop")
                     && !videoPlayer.classList.contains("ad-showing")) {
                 // attempt to prevent the default redirect from triggering
@@ -343,7 +348,7 @@
 
         function getPreviousURL(){ // returns <a> element
             var elem;
-            if (ytdApp.hasAttribute("miniplayer-active_")) { // avoid being forced out of miniplayer mode on video load
+            if (ytdApp.hasAttribute("miniplayer-active") || ytdApp.hasAttribute("miniplayer-active_")) { // avoid being forced out of miniplayer mode on video load
                 elem = $(selectors.miniplayerDiv).find(selectors.playlistCurrentVideo).prev();
             } else {
                 elem = $(selectors.content).find(selectors.playlistCurrentVideo).prev();
