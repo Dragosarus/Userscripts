@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.2
+// @version      3.3
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -310,7 +310,7 @@
                 label.setAttribute("font-size","13px");
                 label.setAttribute("fill",textColor);
                 label.setAttribute("id","drypt_label");
-                $(selectors.playlistHeaderText)[0].appendChild(label);
+                $(selectors.playlistHeaderText).filter(":visible")[0].appendChild(label);
             }
             $(selectors.drypt_label)[0].innerHTML = before + timeString + percentageString;
 
