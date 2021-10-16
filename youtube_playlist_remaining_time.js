@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.3
+// @version      3.4
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -206,7 +206,11 @@
         if (miniplayerActive) {
             vidNum_tmp = $(selectors.vidNum_miniplayer).children()[2].innerHTML;
         } else {
-            vidNum_tmp = $(selectors.vidNum)[0].innerHTML;
+            // the desired element is hidden; to distinguish from
+            // other hidden elements, check parent's visibility
+            vidNum_tmp = $(selectors.vidNum).filter(function(){
+                return $(this).parent().is(":visible");
+            })[0].innerHTML;
         }
         return vidNum_tmp.split(" / ").map(x => parseInt(x));
     }
