@@ -331,11 +331,17 @@
 
         function getVidNum() { // returns integer array [current, total], e.g "32 / 152" => [32, 152]
             var vidNum_tmp;
-            if (ytdApp.hasAttribute("miniplayer-active_")) {
-                vidNum_tmp = $(selectors.playlistVideosMiniplayer)[0].innerHTML;
+            if (ytdApp.hasAttribute("miniplayer-active") || ytdApp.hasAttribute("miniplayer-active_")) {
+                vidNum_tmp = $(selectors.playlistVideosMiniplayer);
             } else {
-                vidNum_tmp = $(selectors.playlistVideos)[0].innerHTML;
+                vidNum_tmp = $(selectors.playlistVideos);
             }
+            // the desired element is hidden; to distinguish from
+            // other hidden elements, check parent's visibility
+            vidNum_tmp = vidNum_tmp.filter(function(){
+                return $(this).parent().is(":visible");
+            })[0].innerHTML;
+
             return vidNum_tmp.split(" / ").map(x => parseInt(x));
         }
 
