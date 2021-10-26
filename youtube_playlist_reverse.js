@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      7.4
+// @version      7.5
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -27,17 +27,17 @@
         // Determines when to load the next video.
         // Increase these if the redirect does not work as intended (i.e. fails to override Youtube's redirect),
         // Decreasing these will let you see more of the video before it redirects, but the redirect might stop working (consistently)
-        var redirectWhenTimeLeft = 0.3; // seconds before the end of the video
-        var redirectWhenTimeLeft_miniplayer = 0.6;
-        var skipPremiere = true; // Skip videos that have not been premiered yet
+        const redirectWhenTimeLeft = 0.3; // seconds before the end of the video
+        const redirectWhenTimeLeft_miniplayer = 0.6;
+        const skipPremiere = true; // Skip videos that have not been premiered yet
 
-        var activeColor = "rgb(64,166,255)";
-        var inactiveColor = "rgb(144,144,144)";
-        var circleColor = "rgb(144,144,144)";
-        var ttBGColor = "rgb(100,100,100)";
-        var ttTextColor = "rgb(237,240,243)";
+        const activeColor = "rgb(64,166,255)";
+        const inactiveColor = "rgb(144,144,144)";
+        const circleColor = "rgb(144,144,144)";
+        const ttBGColor = "rgb(100,100,100)";
+        const ttTextColor = "rgb(237,240,243)";
 
-        var selectors = {
+        const selectors = {
             "buttonLocation":            "div[id=playlist-action-menu] > .ytd-playlist-panel-renderer > div[id=top-level-buttons-computed]",
             "content":                   "#content",
             "player":                    ".html5-main-video",
@@ -54,31 +54,30 @@
             "videoPlayer":               ".html5-video-player"
         }
 
-        var debug = false;
+        const debug = false;
+        const ytdApp = $("ytd-app")[0];
 
-        var player;
-        var playPrevious;
-        var ytdApp = $("ytd-app")[0];
-        var redirectFlag = false;
-        var vidNum; // string
-        var shuffle;
-        var miniplayerFlag = false; // keep track of switches between miniplayer and normal mode
-        var playerListenersAdded = false;
+        let player;
+        let playPrevious;
+        let redirectFlag = false;
+        let shuffle;
+        let miniplayerFlag = false; // keep track of switches between miniplayer and normal mode
+        let playerListenersAdded = false;
 
         // create button
-        var svgNS = "http://www.w3.org/2000/svg";
-        var btn_div = document.createElement("div");
-        var bg_circle = document.createElementNS(svgNS, "circle");
-        var bg_circle_anim = document.createElementNS(svgNS, "animate");
-        var arrow_up = document.createElementNS(svgNS, "polygon");
-        var arrow_down = document.createElementNS(svgNS, "polygon");
-        var btn_svg = document.createElementNS(svgNS, "svg");
-        var tt_svg = document.createElementNS(svgNS, "svg");
-        var tt_svg_fadein = document.createElementNS(svgNS, "animate");
-        var tt_svg_fadeout = document.createElementNS(svgNS, "animate");
-        var tt_rect = document.createElementNS(svgNS, "rect");
-        var tt_text = document.createElementNS(svgNS, "text");
-        var tt_div = document.createElement("div");
+        const svgNS = "http://www.w3.org/2000/svg";
+        const btn_div = document.createElement("div");
+        const bg_circle = document.createElementNS(svgNS, "circle");
+        const bg_circle_anim = document.createElementNS(svgNS, "animate");
+        const arrow_up = document.createElementNS(svgNS, "polygon");
+        const arrow_down = document.createElementNS(svgNS, "polygon");
+        const btn_svg = document.createElementNS(svgNS, "svg");
+        const tt_svg = document.createElementNS(svgNS, "svg");
+        const tt_svg_fadein = document.createElementNS(svgNS, "animate");
+        const tt_svg_fadeout = document.createElementNS(svgNS, "animate");
+        const tt_rect = document.createElementNS(svgNS, "rect");
+        const tt_text = document.createElementNS(svgNS, "text");
+        const tt_div = document.createElement("div");
 
         setAttributes(bg_circle_anim, [["attributeName", "fill-opacity"],
                                        ["values", "0;0.1;0.2;0.1;0.0"],
@@ -134,7 +133,7 @@
                                        ["begin", "indefinite"],
                                        ["id", "pytplir_tt_fadeout"],
                                        ["fill", "freeze"]]);
-        var tt_svg_offset = "position:absolute; top:13px; left:-32px; z-index:100; opacity:0.0;";
+        const tt_svg_offset = "position:absolute; top:13px; left:-32px; z-index:100; opacity:0.0;";
         setAttributes(tt_svg, [["viewbox", "0 0 100 34"],
                                ["xmlns", "http://www.w3.org/2000/svg"],
                                ["width", "100"],
@@ -157,13 +156,13 @@
         init();
 
         function setAttributes(node, attributeValuePairs) { // [["id", "example"], ["width","20"], ...]
-            for (var attVal of attributeValuePairs){
+            for (let attVal of attributeValuePairs){
                 node.setAttribute(attVal[0], attVal[1]);
             }
         }
 
         function appendChildren(node, childList) {
-            for (var child of childList) {
+            for (let child of childList) {
                 node.appendChild(child);
             }
         }
@@ -248,7 +247,7 @@
         }
 
         function withQuery(query, filter="*", onSuccess = function(r){}) {
-            var res;
+            let res;
             if (filter == "*") {
                 res = $(query);
             } else {
@@ -263,12 +262,12 @@
         }
 
         function checkTime() {
-            var miniplayerActive = ytdApp.hasAttribute("miniplayer-active_") || ytdApp.hasAttribute("miniplayer-active");
-            var context = miniplayerActive ? selectors.miniplayerDiv : selectors.content;
-            var buttonSelector = context + " " + selectors.buttonLocation + " #pytplir_div";
-            var noButton = !$(buttonSelector).length;
-            var playlistHeaderQuery = miniplayerActive ? $(selectors.playlistVideosMiniplayer).parent() : $(selectors.playlistVideos).parent();
-            var playlistVisible = playlistHeaderQuery.length && playlistHeaderQuery.is(":visible");
+            let miniplayerActive = ytdApp.hasAttribute("miniplayer-active_") || ytdApp.hasAttribute("miniplayer-active");
+            let context = miniplayerActive ? selectors.miniplayerDiv : selectors.content;
+            let buttonSelector = context + " " + selectors.buttonLocation + " #pytplir_div";
+            let noButton = !$(buttonSelector).length;
+            let playlistHeaderQuery = miniplayerActive ? $(selectors.playlistVideosMiniplayer).parent() : $(selectors.playlistVideos).parent();
+            let playlistVisible = playlistHeaderQuery.length && playlistHeaderQuery.is(":visible");
 
             // exit early when not watching a playlist
             if (!playlistVisible) {return;} // button not loaded
@@ -280,11 +279,11 @@
             debugLog("checkTime: miniplayer: " + miniplayerActive +
                      ", button == " + !noButton);
 
-            var timeLeft = player.duration - player.currentTime;
-            var videoPlayer = $(selectors.videoPlayer)[0];
+            let timeLeft = player.duration - player.currentTime;
+            let videoPlayer = $(selectors.videoPlayer)[0];
 
-            var redirectTime;
-            var shuffleContext;
+            let redirectTime;
+            let shuffleContext;
             if (miniplayerActive) {
                 redirectTime = redirectWhenTimeLeft_miniplayer;
                 shuffleContext = selectors.playlistButtonsMiniplayer;
@@ -309,7 +308,7 @@
             	return;
             }
 
-            var shuffleEnabled;
+            let shuffleEnabled;
             try {
                 shuffleEnabled = strToBool(shuffle.attributes["aria-pressed"].nodeValue);
             } catch (TypeError) { // e.g. when using Queues
@@ -330,38 +329,39 @@
         }
 
         function getVidNum() { // returns integer array [current, total], e.g "32 / 152" => [32, 152]
-            var vidNum_tmp;
+            let vidNum;
             if (ytdApp.hasAttribute("miniplayer-active") || ytdApp.hasAttribute("miniplayer-active_")) {
-                vidNum_tmp = $(selectors.playlistVideosMiniplayer);
+                vidNum = $(selectors.playlistVideosMiniplayer);
             } else {
-                vidNum_tmp = $(selectors.playlistVideos);
+                vidNum = $(selectors.playlistVideos);
             }
             // the desired element is hidden; to distinguish from
             // other hidden elements, check parent's visibility
-            vidNum_tmp = vidNum_tmp.filter(function(){
+            vidNum = vidNum.filter(function(){
                 return $(this).parent().is(":visible");
             })[0].innerHTML;
 
-            return vidNum_tmp.split(" / ").map(x => parseInt(x));
+            return vidNum.split(" / ").map(x => parseInt(x));
         }
 
         function redirect() {
-            var previousURL = getPreviousURL();
+            let previousURL = getPreviousURL();
             if (previousURL) {
                 previousURL.click();
             }
         }
 
         function getPreviousURL(){ // returns <a> element
-            var elem;
+            let elem;
             if (ytdApp.hasAttribute("miniplayer-active") || ytdApp.hasAttribute("miniplayer-active_")) { // avoid being forced out of miniplayer mode on video load
                 elem = $(selectors.miniplayerDiv).find(selectors.playlistCurrentVideo).prev();
             } else {
                 elem = $(selectors.content).find(selectors.playlistCurrentVideo).prev();
             }
 
+            let ts;
             if (skipPremiere) {
-                var ts = $(elem).find(selectors.timestamp);
+                ts = $(elem).find(selectors.timestamp);
                 if (ts.length) {ts = ts[0].innerHTML; }
             }
 
@@ -392,16 +392,16 @@
         }
 
         function getCookie(cname) {
-            var name = cname + "=";
-            var decodedCookie = decodeURIComponent(document.cookie);
-            var ca = decodedCookie.split(';');
-            for(var i = 0; i <ca.length; i++) {
-                var c = ca[i];
+            let name = cname + "=";
+            let decodedCookie = decodeURIComponent(document.cookie);
+            let ca = decodedCookie.split(';');
+            for(let i = 0; i <ca.length; i++) {
+                let c = ca[i];
                 while (c.charAt(0) == ' ') {
                 c = c.substring(1);
                 }
                 if (c.indexOf(name) == 0) {
-                    var x = c.substring(name.length, c.length);
+                    let x = c.substring(name.length, c.length);
                     return strToBool(x);
                 }
             }
