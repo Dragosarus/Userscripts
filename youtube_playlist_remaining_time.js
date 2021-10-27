@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.4
+// @version      3.5
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -190,29 +190,29 @@
 
     function checkIncomplete(entry, direction) {
         var vidNums = getVidNum();
-        var num = parseInt($(entry).find("#index")[0].innerHTML);
-        var currentVideo = isNaN(num) // ▶ instead of number
+        var num = $(entry).find("#index")[0].innerHTML;
+        var currentVideo = isNaN(parseInt(num)) // ▶ instead of number
         if (!currentVideo){ // current video is neither the first nor the last video in the playlist
             if (direction == direction_global) {
-                incompleteFlag = (direction_global == DOWN && num != vidNums[1]) || (direction_global == UP && num != 1);
+                incompleteFlag = (direction_global == DOWN && num !== vidNums[1]) || (direction_global == UP && num !== "1");
             } else {
-                incompleteFlagR = (direction_global == UP && num != vidNums[1]) || (direction_global == DOWN && num != 1);
+                incompleteFlagR = (direction_global == UP && num !== vidNums[1]) || (direction_global == DOWN && num !== "1");
             }
         }
     }
 
-    function getVidNum() { // returns integer array [current, total], e.g "32 / 152" => [32,152]
-        var vidNum_tmp;
+    function getVidNum() { // returns string array [current, total], e.g "32 / 152" => ["32","152"]
+        var vidNum;
         if (miniplayerActive) {
-            vidNum_tmp = $(selectors.vidNum_miniplayer).children()[2].innerHTML;
+            vidNum = $(selectors.vidNum_miniplayer).children()[2].innerHTML;
         } else {
             // the desired element is hidden; to distinguish from
             // other hidden elements, check parent's visibility
-            vidNum_tmp = $(selectors.vidNum).filter(function(){
+            vidNum = $(selectors.vidNum).filter(function(){
                 return $(this).parent().is(":visible");
             })[0].innerHTML;
         }
-        return vidNum_tmp.split(" / ").map(x => parseInt(x));
+        return vidNum.split(" / ");
     }
 
     function getDirection(){ // Compatible with https://greasyfork.org/en/scripts/404986-play-youtube-playlist-in-reverse-order
