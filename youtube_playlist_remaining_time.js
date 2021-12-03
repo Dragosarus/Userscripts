@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      3.5
+// @version      4.0
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -46,6 +46,7 @@
     const updateCooldown = 2500; // limit how often update() is run (milliseconds)
 
     const time_after = " left) "; // e.g "15h 20m 15s left)"
+    const time_processing = "..."; // shown after the script has started updating and before it has finished
     const incompleteIndicator_time = "(>"; // e.g "(>15h 20m 15s left)", for large playlists (> 200 videos)
     const completeIndicator_time = "("; // e.g "(15h 20m 15s left)"
 
@@ -55,18 +56,19 @@
     const completeIndicator_percentage = " ["; // e.g "(10s left) [20% done]"
     const percentage_decimalPlaces = 1;
     const percentage_after = [percentageFormat0_after, percentageFormat1_after];
+    const percentage_processing = "[...]"; // shown after the script has started updating and before it has finished
 
 
     const DOWN = false; // direction
     const UP = true; // direction
-    var updateFlagTime = 0;
-    var time_total_s = 0;
-    var time_total_s_elapsed = 0; // stores duration of previous videos
-    var direction_global = DOWN;
-    var errorFlag = false;
-    var incompleteFlag = false; // A playlist only displays the 199 previous+next entries in the playlist.
-    var incompleteFlagR = false; // Used to determine if the percentage is accurate; checks the direction opposite to direction_global
-    var miniplayerActive = false;
+    let updateFlagTime = 0;
+    let time_total_s = 0;
+    let time_total_s_elapsed = 0; // stores duration of previous videos
+    let direction_global = DOWN;
+    let errorFlag = false;
+    let incompleteFlag = false; // A playlist only displays the 199 previous+next entries in the playlist.
+    let incompleteFlagR = false; // Used to determine if the percentage is accurate; checks the direction opposite to direction_global
+    let miniplayerActive = false;
 
     const selectors = {
         "currentVideo": "#content ytd-playlist-panel-video-renderer[selected]",
@@ -74,7 +76,8 @@
         "drypt_label": "#drypt_label", // created by this script
         "drypt_label_miniplayer": "#drypt_label_miniplayer", // created by this script
         "playlistHeaderText": "div.index-message-wrapper",
-        "pytplir_btn": "#pytplir_btn", // https://greasyfork.org/en/scripts/404986-play-youtube-playlist-in-reverse-order
+        "pytplir_btn": "#content #pytplir_btn", // https://greasyfork.org/en/scripts/404986-play-youtube-playlist-in-reverse-order
+        "pytplir_btn_miniplayer": "div.miniplayer #pytplir_btn",
         "timestamp": "span.ytd-thumbnail-overlay-time-status-renderer",
         "unplayableText": "#unplayableText",
         "vidCount": ".ytd-watch-flexy #playlist #publisher-container div yt-formatted-string",
@@ -108,17 +111,25 @@
     }
 
     function check() {
+        miniplayerActive = $(selectors.ytd_app)[0].hasAttribute("miniplayer-active_") || $(selectors.ytd_app)[0].hasAttribute("miniplayer-active");
         if (!$(selectors.drypt_label).length || (miniplayerActive && !$(selectors.drypt_label_miniplayer).length)) {
             update();
         }
-        if ($(selectors.pytplir_btn).length) {
-            pytplirObserver.observe($(selectors.pytplir_btn)[0],{attributes:true});
+
+        let pytplir_btn;
+        if (miniplayerActive) {
+            pytplir_btn = document.querySelector(selectors.pytplir_btn_miniplayer);
+        } else {
+            pytplir_btn = document.querySelector(selectors.pytplir_btn);
         }
 
+        if (pytplir_btn) {
+            pytplir_btn.addEventListener("click", pytplirCallback);
+        }
     }
 
     function update(force=false) {
-        var timeSinceUpdate = Date.now() - updateFlagTime;
+        let timeSinceUpdate = Date.now() - updateFlagTime;
         if (timeSinceUpdate < updateCooldown && !force) {
             setTimeout(update, updateCooldown - timeSinceUpdate);
             return;
@@ -126,8 +137,10 @@
 
         updateFlagTime = Date.now();
         miniplayerActive = $(selectors.ytd_app)[0].hasAttribute("miniplayer-active_") || $(selectors.ytd_app)[0].hasAttribute("miniplayer-active");
-        var playlistEntry = getCurrentEntry();
+        let playlistEntry = getCurrentEntry();
         if (!playlistEntry) {return;}
+
+        display(true); // display message to indicate the script is processing the time left
 
         direction_global = getDirection();
         incompleteFlag = false;
@@ -141,7 +154,7 @@
         if (playlistEntry) {
             addTime(playlistEntry, direction_global);
             if (showPercentage) { // also need to sum the video durations in the other direction
-                var next = getNextEntry(playlistEntry,!direction_global);
+                let next = getNextEntry(playlistEntry,!direction_global);
                 if (next) {
                     addTime(next, !direction_global);
                 }
@@ -157,7 +170,7 @@
     }
 
     function getCurrentEntry(){ // returns <ytd-playlist-panel-video-renderer> element
-        var elem;
+        let elem;
         try {
             if (miniplayerActive) {
                 return $(selectors.currentVideo_miniplayer)[0];
@@ -170,7 +183,7 @@
     }
 
     function getNextEntry(current, direction){
-        var previous = current;
+        let previous = current;
         if (direction) {
             current = $(current).prev();
         } else {
@@ -189,9 +202,21 @@
     }
 
     function checkIncomplete(entry, direction) {
-        var vidNums = getVidNum();
-        var num = $(entry).find("#index")[0].innerHTML;
-        var currentVideo = isNaN(parseInt(num)) // ▶ instead of number
+        let vidNums = getVidNum();
+        if (vidNums === undefined) { return; }
+        let num;
+        try {
+            num = $(entry).find("#index")[0].innerHTML;
+        } catch (e) { // most likely, the bottom of the playlist contains a message saying "n unavailable videos"
+            let lastAvailableNum = $(entry).prev().find("#index")[0].innerHTML; // playlist index of the video before the message
+            if (!(isNaN(parseInt(lastAvailableNum)))) { // last visible video in the list is not the last "available" one
+                incompleteFlag = lastAvailableNum === vidNums[1];
+            } else { // current video is the last "available" one, but there are unavailable videos
+                incompleteFlag = false;
+            }
+            return;
+        }
+        let currentVideo = isNaN(parseInt(num)) // ▶ instead of number
         if (!currentVideo){ // current video is neither the first nor the last video in the playlist
             if (direction == direction_global) {
                 incompleteFlag = (direction_global == DOWN && num !== vidNums[1]) || (direction_global == UP && num !== "1");
@@ -202,30 +227,39 @@
     }
 
     function getVidNum() { // returns string array [current, total], e.g "32 / 152" => ["32","152"]
-        var vidNum;
+        let vidNum;
         if (miniplayerActive) {
             vidNum = $(selectors.vidNum_miniplayer).children()[2].innerHTML;
         } else {
-            // the desired element is hidden; to distinguish from
-            // other hidden elements, check parent's visibility
-            vidNum = $(selectors.vidNum).filter(function(){
-                return $(this).parent().is(":visible");
-            })[0].innerHTML;
+            try {
+                // the desired element is hidden; to distinguish from
+                // other hidden elements, check parent's visibility
+                vidNum = $(selectors.vidNum).filter(function(){
+                    return $(this).parent().is(":visible");
+                })[0].innerHTML;
+            } catch (e) { // e.g. the user switched from one playlist to another
+                return undefined;
+            }
         }
         return vidNum.split(" / ");
     }
 
     function getDirection(){ // Compatible with https://greasyfork.org/en/scripts/404986-play-youtube-playlist-in-reverse-order
-        var pytplir_btn = $(selectors.pytplir_btn);
-        if (!pytplir_btn.length) {
+        let pytplir_btn;
+        if (miniplayerActive) {
+            pytplir_btn = document.querySelector(selectors.pytplir_btn_miniplayer);
+        } else {
+            pytplir_btn = document.querySelector(selectors.pytplir_btn);
+        }
+        if (!pytplir_btn) {
             return DOWN;
         } else {
-            return pytplir_btn.attr("activated") == "true" ? UP : DOWN;
+            return $(pytplir_btn).attr("activated") == "true" ? UP : DOWN;
         }
     }
 
     function addTime(entry, direction) {
-        var time_raw = getTime(entry);
+        let time_raw = getTime(entry);
         if (time_raw != "-1") {
             if (direction == direction_global){
                 time_total_s += hmsToSecondsOnly(time_raw);
@@ -242,9 +276,9 @@
     }
 
     function getTime(item) {
-        var unavailable = !$(item).find(selectors.unplayableText).prop("hidden");
+        let unavailable = !$(item).find(selectors.unplayableText).prop("hidden");
         if (!unavailable) {
-            var time = $(item).find(selectors.timestamp);
+            let time = $(item).find(selectors.timestamp);
             if (!time.length) {// timestamp has not been loaded yet
                 return "-1";
             } else {
@@ -257,7 +291,7 @@
 
     // https://stackoverflow.com/questions/9640266/convert-hhmmss-string-to-seconds-only-in-javascript
     function hmsToSecondsOnly(str) {
-        var p = str.split(':'),
+        let p = str.split(':'),
             s = 0, m = 1;
 
         while (p.length > 0) {
@@ -272,21 +306,25 @@
         return s;
     }
 
-    function display() {
-        var time = formatTime(time_total_s);
-        if (time == "") {return;} // this is apparently possible
-        var timeString = "";
-        if (showTime) {
-            var time_before = incompleteFlag ? incompleteIndicator_time : completeIndicator_time; // e.g "(more than " or "( "
-            timeString = time_before + time + time_after;
+    function display(showLoading=false) {
+        let timeString = "";
+        if (showLoading) { timeString = time_processing; }
+        else {
+            let time = formatTime(time_total_s);
+            if (time == "") {return;} // this is apparently possible
+            if (showTime) {
+                let time_before = incompleteFlag ? incompleteIndicator_time : completeIndicator_time; // e.g "(more than " or "( "
+                timeString = time_before + time + time_after;
+            }
         }
 
-        var percentageString = "";
-        if (showPercentage) {
-            var missingData = incompleteFlag || incompleteFlagR; // due to large playlist
-            var percentage_before = missingData ? incompleteIndicator_percentage : completeIndicator_percentage;
-            var playlistTime = time_total_s + time_total_s_elapsed;
-            var percentage;
+        let percentageString = "";
+        if (showLoading) {percentageString = percentage_processing; }
+        else if (showPercentage) {
+            let missingData = incompleteFlag || incompleteFlagR; // due to large playlist
+            let percentage_before = missingData ? incompleteIndicator_percentage : completeIndicator_percentage;
+            let playlistTime = time_total_s + time_total_s_elapsed;
+            let percentage;
             switch (percentageFormat) { // determine numerator
                 case 0: // show % watched
                     percentage = time_total_s_elapsed;
@@ -306,10 +344,10 @@
             percentageString = percentage_before + percentage + percentage_after[percentageFormat];
         }
 
+        let textColor = "rgb(237,240,243)";
         if (!miniplayerActive) {
             if (!$(selectors.drypt_label).length) {
-                var label = document.createElement("a");
-                var textColor = "rgb(237,240,243)";
+                let label = document.createElement("a");
                 label.setAttribute("font-family","Roboto, Noto, sans-serif");
                 label.setAttribute("font-size","13px");
                 label.setAttribute("fill",textColor);
@@ -320,7 +358,7 @@
 
         } else { // miniplayer
             if (!$(selectors.drypt_label_miniplayer).length) {
-                var label_miniplayer = document.createElement("a");
+                let label_miniplayer = document.createElement("a");
                 label_miniplayer.setAttribute("font-family","Roboto, Noto, sans-serif");
                 label_miniplayer.setAttribute("font-size","13px");
                 label_miniplayer.setAttribute("fill",textColor);
@@ -333,7 +371,7 @@
     }
 
     function formatTime(time_total_s) {
-        var formats = [formatTime0, formatTime1, formatTime2];
+        let formats = [formatTime0, formatTime1, formatTime2];
         if (timeFormat > formats.length || timeFormat < 0) {
             timeFormat = 0;
         }
@@ -351,12 +389,12 @@
     }
 
     function formatTime1(time_total_s) { // xhxmxs (e.g 25m2s or 25m 2s)
-        var space = timeFormat1_spacing ? " " : "";
-        var hh = Math.floor(time_total_s / 3600);
-        var mm = Math.floor((time_total_s % 3600) / 60);
-        var ss = time_total_s % 60;
+        let space = timeFormat1_spacing ? " " : "";
+        let hh = Math.floor(time_total_s / 3600);
+        let mm = Math.floor((time_total_s % 3600) / 60);
+        let ss = time_total_s % 60;
 
-        var text = "";
+        let text = "";
         if (hh > 0 || timeFormat1_forceFull) {
             text += hh + "h" + space;
         };
@@ -370,11 +408,11 @@
     }
 
     function formatTime2(time_total_s) { // h:mm:ss (e.g 25:02 or 1:00:31 or 0:03)
-        var hh = Math.floor(time_total_s / 3600);
-        var mm = Math.floor((time_total_s % 3600) / 60);
-        var ss = time_total_s % 60;
+        let hh = Math.floor(time_total_s / 3600);
+        let mm = Math.floor((time_total_s % 3600) / 60);
+        let ss = time_total_s % 60;
 
-        var text = "";
+        let text = "";
         if (hh > 0 || timeFormat2_forceFull) {
             text += hh + ":";
         }
