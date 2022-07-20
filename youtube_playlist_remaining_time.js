@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      4.0
+// @version      4.1
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -13,6 +13,9 @@
 
 (function() {
     'use strict';
+
+    // Logs handled exceptions to the console.
+    const debug = false;
 
     /* Time formats:
      * 0: "x.xx hours" or "x.xx minutes" or "x seconds"
@@ -154,7 +157,7 @@
         if (playlistEntry) {
             addTime(playlistEntry, direction_global);
             if (showPercentage) { // also need to sum the video durations in the other direction
-                let next = getNextEntry(playlistEntry,!direction_global);
+                let next = getNextEntry(playlistEntry, !direction_global);
                 if (next) {
                     addTime(next, !direction_global);
                 }
@@ -206,9 +209,16 @@
         if (vidNums === undefined) { return; }
         let num;
         try {
-            num = $(entry).find("#index")[0].innerHTML;
+            num = $(entry).find("#index")[0].innerText;
         } catch (e) { // most likely, the bottom of the playlist contains a message saying "n unavailable videos"
-            let lastAvailableNum = $(entry).prev().find("#index")[0].innerHTML; // playlist index of the video before the message
+            let lastAvailableNum;
+            try {
+                 lastAvailableNum = $(entry).prev().find("#index")[0].innerText; // playlist index of the video before the message
+            } catch (e2) { // perhaps the playlist has not fully loaded yet?
+                debugLog(entry, direction, e, e2);
+                return;
+            }
+
             if (!(isNaN(parseInt(lastAvailableNum)))) { // last visible video in the list is not the last "available" one
                 incompleteFlag = lastAvailableNum === vidNums[1];
             } else { // current video is the last "available" one, but there are unavailable videos
@@ -229,14 +239,14 @@
     function getVidNum() { // returns string array [current, total], e.g "32 / 152" => ["32","152"]
         let vidNum;
         if (miniplayerActive) {
-            vidNum = $(selectors.vidNum_miniplayer).children()[2].innerHTML;
+            vidNum = $(selectors.vidNum_miniplayer).children()[2].innerText;
         } else {
             try {
                 // the desired element is hidden; to distinguish from
                 // other hidden elements, check parent's visibility
                 vidNum = $(selectors.vidNum).filter(function(){
                     return $(this).parent().is(":visible");
-                })[0].innerHTML;
+                })[0].innerText;
             } catch (e) { // e.g. the user switched from one playlist to another
                 return undefined;
             }
@@ -282,7 +292,7 @@
             if (!time.length) {// timestamp has not been loaded yet
                 return "-1";
             } else {
-                return $.trim(time[0].innerHTML);
+                return $.trim(time[0].innerText);
             }
         } else { // unwatchable video => no timestamp
             return "0";
@@ -354,7 +364,7 @@
                 label.setAttribute("id","drypt_label");
                 $(selectors.playlistHeaderText).filter(":visible")[0].appendChild(label);
             }
-            $(selectors.drypt_label)[0].innerHTML = before + timeString + percentageString;
+            $(selectors.drypt_label)[0].innerText = before + timeString + percentageString;
 
         } else { // miniplayer
             if (!$(selectors.drypt_label_miniplayer).length) {
@@ -365,7 +375,7 @@
                 label_miniplayer.setAttribute("id","drypt_label_miniplayer");
                 $(selectors.vidNum_miniplayer)[0].appendChild(label_miniplayer);
             }
-            $(selectors.drypt_label_miniplayer)[0].innerHTML = before_miniplayer + timeString + percentageString;
+            $(selectors.drypt_label_miniplayer)[0].innerText = before_miniplayer + timeString + percentageString;
         }
         incompleteFlag = false;
     }
@@ -425,5 +435,11 @@
         return text;
     }
 
+    function debugLog(...args) {
+        if (debug) {
+            args.unshift("drypt:");
+            console.log.apply(this, args);
+        };
+    }
 })();
 /*eslint-env jquery*/ // stop eslint from showing "'$' is not defined" warnings
