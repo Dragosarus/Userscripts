@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      7.7
+// @version      7.8
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -37,6 +37,9 @@
         const ttBGColor = "rgb(100,100,100)";
         const ttTextColor = "rgb(237,240,243)";
 
+        // Logs debug messages to the console.
+        const debug = false;
+
         const selectors = {
             "buttonLocation":            "div[id=playlist-action-menu] > .ytd-playlist-panel-renderer > div[id=top-level-buttons-computed]",
             "content":                   "#content",
@@ -54,13 +57,13 @@
             "videoPlayer":               ".html5-video-player"
         }
 
-        const debug = false;
         const ytdApp = $("ytd-app")[0];
 
         let player;
         let playPrevious;
         let redirectFlag = false;
         let shuffle;
+        let miniplayerActive = false;
         let miniplayerFlag = false; // keep track of switches between miniplayer and normal mode
         let playerListenersAdded = false;
 
@@ -230,9 +233,10 @@
                     this.setAttribute("style", "fill:" + activeColor);
                 });
             }
-            let miniplayerActive = ytdApp.hasAttribute("miniplayer-active_") || ytdApp.hasAttribute("miniplayer-active");
+            miniplayerActive = isMiniplayerActive();
             let ctx = miniplayerActive ? selectors.miniplayerDiv : selectors.content;
             $(ctx + " #pytplir_btn")[0].setAttribute("activated", playPrevious);
+            debugLog($(ctx + " #pytplir_btn"));
         }
 
         function start() { // Add button(s) and event listeners
@@ -263,8 +267,18 @@
             }
         }
 
+        function isMiniplayerActive() {
+            // Youtube seems to change this quite often, and due to A/B testing all of them need to be checked
+            let miniplayer_attributes = ["miniplayer-is-active", "miniplayer-active_", "miniplayer-active"];
+            miniplayerActive = false;
+            for (let attr of miniplayer_attributes) {
+                miniplayerActive ||= ytdApp.hasAttribute(attr);
+            }
+            return miniplayerActive;
+        }
+
         function checkTime() {
-            let miniplayerActive = ytdApp.hasAttribute("miniplayer-active_") || ytdApp.hasAttribute("miniplayer-active");
+            let miniplayerActive = isMiniplayerActive();
             let context = miniplayerActive ? selectors.miniplayerDiv : selectors.content;
             let buttonSelector = context + " " + selectors.buttonLocation + " #pytplir_div";
             let noButton = !$(buttonSelector).length;
@@ -341,7 +355,7 @@
             // other hidden elements, check parent's visibility
             vidNum = vidNum.filter(function(){
                 return $(this).parent().is(":visible");
-            })[0].innerHTML;
+            })[0].innerText;
 
             return vidNum.split(" / ");
         }
@@ -364,7 +378,7 @@
             let ts;
             if (skipPremiere) {
                 ts = $(elem).find(selectors.timestamp);
-                if (ts.length) {ts = ts[0].innerHTML; }
+                if (ts.length) {ts = ts[0].innerText; }
             }
 
             while (!elem.find("#unplayableText").prop("hidden") ||
@@ -372,7 +386,7 @@
                 elem = elem.prev();
                 if (skipPremiere) {
                     ts = $(elem).find(selectors.timestamp);
-                    if (ts.length) { ts = ts[0].innerHTML; }
+                    if (ts.length) { ts = ts[0].innerText; }
                 }
             }
             return elem.children()[0];
@@ -382,10 +396,11 @@
             return str.toLowerCase() == "true";
         }
 
-        function debugLog(msg){
+        function debugLog(...args) {
             if (debug) {
-                console.log("pytplir: " + msg);
-            };
+                args.unshift("pytplir:");
+                console.log.apply(this, args);
+            }
         }
 
         // adapted from https://www.w3schools.com/js/js_cookies.asp
