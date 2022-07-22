@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      4.1
+// @version      4.2
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -14,7 +14,7 @@
 (function() {
     'use strict';
 
-    // Logs handled exceptions to the console.
+    // Logs debug messages to the console.
     const debug = false;
 
     /* Time formats:
@@ -82,6 +82,7 @@
         "pytplir_btn": "#content #pytplir_btn", // https://greasyfork.org/en/scripts/404986-play-youtube-playlist-in-reverse-order
         "pytplir_btn_miniplayer": "div.miniplayer #pytplir_btn",
         "timestamp": "span.ytd-thumbnail-overlay-time-status-renderer",
+        "timestamp2": ".ytd-thumbnail-overlay-time-status-renderer", // requires iteration over results
         "unplayableText": "#unplayableText",
         "vidCount": ".ytd-watch-flexy #playlist #publisher-container div yt-formatted-string",
         "vidCount_miniplayer": "yt-formatted-string[id=owner-name] :nth-child(3)",
@@ -101,20 +102,40 @@
        update();
     }
     function pytplirCallback(mutationList, observer) {
+       debugLog("Forcing update!");
        update(true); // force update regardless of cooldown
     }
 
     function initObservers(observer) {
         try {
             observer.observe($(selectors.vidCount)[0], observerOptions);
-            observer.observe($(selectors.vidCount_miniplayer)[0], observerOptions); // miniplayer
+            let miniplayerTarget = $(selectors.vidCount_miniplayer);
+            if (!miniplayerTarget.length) {
+                miniplayerTarget = $(selectors.vidNum_miniplayer).next().children()[1];
+            } else {
+                miniplayerTarget = miniplayerTarget[0];
+            }
+            observer.observe(miniplayerTarget, observerOptions); // miniplayer
+            debugLog("Observers initiated!");
         } catch (e) {
+            debugLog("Observer error!", e);
             setTimeout(function(){initObservers(observer)},100);
         }
     }
 
+    function isMiniplayerActive() {
+        // Youtube seems to change this quite often, and due to A/B testing all of them need to be checked
+        let miniplayer_attributes = ["miniplayer-is-active", "miniplayer-active_", "miniplayer-active"];
+        miniplayerActive = false;
+        for (let attr of miniplayer_attributes) {
+            miniplayerActive ||= $(selectors.ytd_app)[0].hasAttribute(attr);
+        }
+        return miniplayerActive;
+    }
+
     function check() {
-        miniplayerActive = $(selectors.ytd_app)[0].hasAttribute("miniplayer-active_") || $(selectors.ytd_app)[0].hasAttribute("miniplayer-active");
+        miniplayerActive = isMiniplayerActive();
+
         if (!$(selectors.drypt_label).length || (miniplayerActive && !$(selectors.drypt_label_miniplayer).length)) {
             update();
         }
@@ -139,7 +160,7 @@
         }
 
         updateFlagTime = Date.now();
-        miniplayerActive = $(selectors.ytd_app)[0].hasAttribute("miniplayer-active_") || $(selectors.ytd_app)[0].hasAttribute("miniplayer-active");
+        miniplayerActive = isMiniplayerActive();
         let playlistEntry = getCurrentEntry();
         if (!playlistEntry) {return;}
 
@@ -165,8 +186,10 @@
         }
 
         if (!errorFlag){
+            debugLog("Displaying!", time_total_s, time_total_s_elapsed);
             display();
         } else {
+            debugLog("Error flag active!");
             setTimeout(update,100);
             errorFlag = false;
         }
@@ -193,10 +216,12 @@
             current = $(current).next();
         }
         if (current.length) {
-            if (!current.find(selectors.unplayableText).prop("hidden")) {
-                return getNextEntry(current, direction);
-            } else {
+            let available = current.find(selectors.unplayableText).prop("hidden")
+            debugLog("getNextEntry", current, available);
+            if (available || available == undefined) {
                 return current[0];
+            } else {
+                return getNextEntry(current, direction);
             }
         } else {
             checkIncomplete(previous, direction);
@@ -209,11 +234,21 @@
         if (vidNums === undefined) { return; }
         let num;
         try {
-            num = $(entry).find("#index")[0].innerText;
+            num = $(entry).find("#index");
+            // For some reason the above now seems to fail for every entry
+            if (!num.length) {
+                num = $(entry).find("span").filter("#index");
+            }
+            num = num[0].innerText;
         } catch (e) { // most likely, the bottom of the playlist contains a message saying "n unavailable videos"
             let lastAvailableNum;
             try {
-                 lastAvailableNum = $(entry).prev().find("#index")[0].innerText; // playlist index of the video before the message
+                 // Get playlist index of the video before the message
+                 lastAvailableNum = $(entry).prev().find("#index");
+                 if (!lastAvailableNum.length) {
+                     lastAvailableNum = $(entry).find("span").filter("#index");
+                 }
+                 lastAvailableNum = lastAvailableNum[0].innerText;
             } catch (e2) { // perhaps the playlist has not fully loaded yet?
                 debugLog(entry, direction, e, e2);
                 return;
@@ -239,7 +274,13 @@
     function getVidNum() { // returns string array [current, total], e.g "32 / 152" => ["32","152"]
         let vidNum;
         if (miniplayerActive) {
-            vidNum = $(selectors.vidNum_miniplayer).children()[2].innerText;
+            vidNum = $(selectors.vidNum_miniplayer).children();
+            if (vidNum.length >= 2) { // Youtube A/B testing
+                vidNum = vidNum[2].innerText;
+            } else {
+                // "• x / y"
+                vidNum = $(selectors.vidNum_miniplayer).parent().children()[1].innerText.substring(2);
+            }
         } else {
             try {
                 // the desired element is hidden; to distinguish from
@@ -270,6 +311,7 @@
 
     function addTime(entry, direction) {
         let time_raw = getTime(entry);
+        debugLog("addTime, time_raw", time_raw);
         if (time_raw != "-1") {
             if (direction == direction_global){
                 time_total_s += hmsToSecondsOnly(time_raw);
@@ -286,10 +328,17 @@
     }
 
     function getTime(item) {
-        let unavailable = !$(item).find(selectors.unplayableText).prop("hidden");
-        if (!unavailable) {
+        let available = $(item).find(selectors.unplayableText).prop("hidden");
+        debugLog("getTime", item, available, $(item).find(selectors.unplayableText));
+        if (available || available == undefined) {
             let time = $(item).find(selectors.timestamp);
-            if (!time.length) {// timestamp has not been loaded yet
+            if (!time.length) {
+                // Either the timestamp has not loaded yet, or the selector stopped working for whatever reason.
+                // In the latter case, searching only for the class and then filtering for the <span> tag should still work.
+                time = $(item).find(selectors.timestamp2).filter("span");
+            }
+
+            if (!time.length) { // Timestamp has not loaded yet
                 return "-1";
             } else {
                 return $.trim(time[0].innerText);
@@ -309,7 +358,8 @@
             m *= 60;
         }
 
-        if (isNaN(s)) { // Likely caused by premiere video
+        if (isNaN(s)) { // Likely caused by premiere video or upcoming livestream
+            debugLog("NaN time:", str);
             return 0;
         }
 
@@ -356,6 +406,7 @@
 
         let textColor = "rgb(237,240,243)";
         if (!miniplayerActive) {
+            debugLog("normal display");
             if (!$(selectors.drypt_label).length) {
                 let label = document.createElement("a");
                 label.setAttribute("font-family","Roboto, Noto, sans-serif");
@@ -367,13 +418,18 @@
             $(selectors.drypt_label)[0].innerText = before + timeString + percentageString;
 
         } else { // miniplayer
+            debugLog("miniplayer display");
             if (!$(selectors.drypt_label_miniplayer).length) {
                 let label_miniplayer = document.createElement("a");
                 label_miniplayer.setAttribute("font-family","Roboto, Noto, sans-serif");
                 label_miniplayer.setAttribute("font-size","13px");
                 label_miniplayer.setAttribute("fill",textColor);
                 label_miniplayer.setAttribute("id","drypt_label_miniplayer");
-                $(selectors.vidNum_miniplayer)[0].appendChild(label_miniplayer);
+                if ($(selectors.vidNum_miniplayer).length < 2) { // Youtube A/B testing
+                    $(selectors.vidNum_miniplayer).parent().children()[1].appendChild(label_miniplayer);
+                } else {
+                    $(selectors.vidNum_miniplayer)[0].appendChild(label_miniplayer);
+                }
             }
             $(selectors.drypt_label_miniplayer)[0].innerText = before_miniplayer + timeString + percentageString;
         }
@@ -439,7 +495,7 @@
         if (debug) {
             args.unshift("drypt:");
             console.log.apply(this, args);
-        };
+        }
     }
 })();
 /*eslint-env jquery*/ // stop eslint from showing "'$' is not defined" warnings
