@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Display remaining Youtube playlist time
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      4.2
+// @version      4.3
 // @description  Displays the sum of the lengths of the remaining videos in a playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -14,6 +14,10 @@
 (function() {
     'use strict';
 
+    // Enable/disable the display of the time remaining and/or the percentage watched/remaining.
+    const showTime = true; // e.g. (25m 2s left)
+    const showPercentage = true; // e.g. [42% done] (will be shown to the right of the time if also enabled)
+
     // Logs debug messages to the console.
     const debug = false;
 
@@ -22,14 +26,12 @@
      * 1: xhxmxs (e.g 25m2s or 25m 2s)
      * 2: h:mm:ss (e.g 25:02 or 1:00:31 or 0:03)
     */
-    const showTime = true;
     const timeFormat = 1;
 
     /* Percentage formats:
      * 0: % watched (e.g. [42% done])
      * 1: % remaining (e.g. [58% left])
     */
-    const showPercentage = false; // e.g. [42% done] (will be shown to the right of the time)
     const percentageFormat = 0;
 
     /* true: The duration of the current video is ignored when determining the time left
@@ -50,16 +52,16 @@
 
     const time_after = " left) "; // e.g "15h 20m 15s left)"
     const time_processing = "..."; // shown after the script has started updating and before it has finished
-    const incompleteIndicator_time = "(>"; // e.g "(>15h 20m 15s left)", for large playlists (> 200 videos)
-    const completeIndicator_time = "("; // e.g "(15h 20m 15s left)"
+    const time_incompleteIndicator = "(>"; // e.g "(>15h 20m 15s left)", for large playlists (> 200 videos)
+    const time_completeIndicator = "("; // e.g "(15h 20m 15s left)"
 
     const percentageFormat0_after = "% done]";
     const percentageFormat1_after = "% left]";
-    const incompleteIndicator_percentage = " [~"; // e.g "(10s left) [~20% done]", for large playlists (> 200 videos)
-    const completeIndicator_percentage = " ["; // e.g "(10s left) [20% done]"
-    const percentage_decimalPlaces = 1;
     const percentage_after = [percentageFormat0_after, percentageFormat1_after];
     const percentage_processing = "[...]"; // shown after the script has started updating and before it has finished
+    const percentage_incompleteIndicator = " [~"; // e.g "(10s left) [~20% done]", for large playlists (> 200 videos)
+    const percentage_completeIndicator = " ["; // e.g "(10s left) [20% done]"
+    const percentage_decimalPlaces = 1;
 
 
     const DOWN = false; // direction
@@ -118,7 +120,7 @@
             observer.observe(miniplayerTarget, observerOptions); // miniplayer
             debugLog("Observers initiated!");
         } catch (e) {
-            debugLog("Observer error!", e);
+            //debugLog("Observer error!", e);
             setTimeout(function(){initObservers(observer)},100);
         }
     }
@@ -204,6 +206,7 @@
                 return $(selectors.currentVideo)[0];
             }
         } catch (e) {
+            debugLog("getCurrentEntry", e);
             errorFlag = true;
         }
     }
@@ -218,7 +221,10 @@
         if (current.length) {
             let available = current.find(selectors.unplayableText).prop("hidden")
             debugLog("getNextEntry", current, available);
-            if (available || available == undefined) {
+            if (current[0].tagName == "YTD-MESSAGE-RENDERER") { // "n unavailable videos" at the end of a playlist
+                checkIncomplete(previous, direction);
+                return undefined;
+            } else if (available || available == undefined) {
                 return current[0];
             } else {
                 return getNextEntry(current, direction);
@@ -311,7 +317,7 @@
 
     function addTime(entry, direction) {
         let time_raw = getTime(entry);
-        debugLog("addTime, time_raw", time_raw);
+        debugLog("addTime", entry, time_raw);
         if (time_raw != "-1") {
             if (direction == direction_global){
                 time_total_s += hmsToSecondsOnly(time_raw);
@@ -373,7 +379,7 @@
             let time = formatTime(time_total_s);
             if (time == "") {return;} // this is apparently possible
             if (showTime) {
-                let time_before = incompleteFlag ? incompleteIndicator_time : completeIndicator_time; // e.g "(more than " or "( "
+                let time_before = incompleteFlag ? time_incompleteIndicator : time_completeIndicator; // e.g "(more than " or "( "
                 timeString = time_before + time + time_after;
             }
         }
@@ -382,7 +388,7 @@
         if (showLoading) {percentageString = percentage_processing; }
         else if (showPercentage) {
             let missingData = incompleteFlag || incompleteFlagR; // due to large playlist
-            let percentage_before = missingData ? incompleteIndicator_percentage : completeIndicator_percentage;
+            let percentage_before = missingData ? percentage_incompleteIndicator : percentage_completeIndicator;
             let playlistTime = time_total_s + time_total_s_elapsed;
             let percentage;
             switch (percentageFormat) { // determine numerator
