@@ -380,8 +380,7 @@
                 ts = $(elem).find(selectors.timestamp);
                 if (ts.length) {ts = ts[0].innerText; }
             }
-
-            let error = false;
+            
             while (!elem.find("#unplayableText").prop("hidden") ||
                    (skipUnplayable && typeof(ts) == "string" && !ts.includes(":"))) { // while an unplayable (e.g. private) video is selected
                 elem = elem.prev();
