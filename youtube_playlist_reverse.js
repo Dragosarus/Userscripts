@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Play Youtube playlist in reverse order
 // @namespace    https://github.com/Dragosarus/Userscripts/
-// @version      7.8
+// @version      7.9
 // @description  Adds button for loading the previous video in a YT playlist
 // @author       Dragosarus
 // @match        http://www.youtube.com/*
@@ -29,7 +29,7 @@
         // Decreasing these will let you see more of the video before it redirects, but the redirect might stop working (consistently)
         const redirectWhenTimeLeft = 0.3; // seconds before the end of the video
         const redirectWhenTimeLeft_miniplayer = 0.6;
-        const skipPremiere = true; // Skip videos that have not been premiered yet
+        const skipUnplayable = true; // Skip videos that have not been premiered yet/upcoming livestreams
 
         const activeColor = "rgb(64,166,255)";
         const inactiveColor = "rgb(144,144,144)";
@@ -376,15 +376,17 @@
             }
 
             let ts;
-            if (skipPremiere) {
+            if (skipUnplayable) {
                 ts = $(elem).find(selectors.timestamp);
                 if (ts.length) {ts = ts[0].innerText; }
             }
 
+            let error = false;
             while (!elem.find("#unplayableText").prop("hidden") ||
-                   (skipPremiere && typeof(ts) == "string" && !ts.includes(":"))) { // while an unplayable (e.g. private) video is selected
+                   (skipUnplayable && typeof(ts) == "string" && !ts.includes(":"))) { // while an unplayable (e.g. private) video is selected
                 elem = elem.prev();
-                if (skipPremiere) {
+                if (!elem.length) return null; // first video in playlist
+                if (skipUnplayable) {
                     ts = $(elem).find(selectors.timestamp);
                     if (ts.length) { ts = ts[0].innerText; }
                 }
