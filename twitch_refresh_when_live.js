@@ -2,7 +2,7 @@
 // @name         Refresh when streamer goes live
 // @namespace    https://github.com/Dragosarus/Userscripts/
 // @version      2025-04-16
-// @description  also unmutes and refreshes on video player error
+// @description  Also unmutes and refreshes on video player error.
 // @author       Dragosarus
 // @match        https://www.twitch.tv/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=twitch.tv
@@ -10,6 +10,7 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @compatible   firefox
+// @license      Unlicense
 // ==/UserScript==
 
 (function() {
